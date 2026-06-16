@@ -207,13 +207,19 @@ class _BuildWorker(QObject):
                 json.dump(self._config, tmp, indent=2)
                 tmp.close()
 
-                sys.path.insert(0, _project_root())
-                from tools.config_builder import (
-                    validate_config,
-                    build_config_blob,
-                    generate_cpp_header,
-                    sync_beacon_to_server,
-                )
+                try:
+                    from pandragon_config_builder import (
+                        validate_config, build_config_blob,
+                        generate_cpp_header, sync_beacon_to_server,
+                    )
+                except ImportError:
+                    _tools_src = os.path.join(_project_root(), "tools", "src")
+                    if _tools_src not in sys.path:
+                        sys.path.insert(0, _tools_src)
+                    from pandragon_config_builder import (
+                        validate_config, build_config_blob,
+                        generate_cpp_header, sync_beacon_to_server,
+                    )
 
                 if self._cancelled:
                     return
