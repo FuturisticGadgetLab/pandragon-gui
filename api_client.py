@@ -36,6 +36,7 @@ class PandragonAPI(QObject):
     beacon_activity = pyqtSignal(str, dict)
     command_issued = pyqtSignal(str, dict)
     command_result = pyqtSignal(str, dict)
+    command_error = pyqtSignal(str, dict)
     beacon_removed = pyqtSignal(str)
     operator_joined = pyqtSignal(str)
     operator_left = pyqtSignal(str)
@@ -242,6 +243,18 @@ class PandragonAPI(QObject):
             beacon_id = data.get('beacon_id', '')
             self.beacon_activity.emit(beacon_id, data)
 
+        elif msg_type == 'command_issued':
+            beacon_id = data.get('beacon_id', '')
+            self.command_issued.emit(beacon_id, data)
+
+        elif msg_type == 'command_result':
+            beacon_id = data.get('beacon_id', '')
+            self.command_result.emit(beacon_id, data)
+
+        elif msg_type == 'command_error':
+            beacon_id = data.get('beacon_id', '')
+            self.command_error.emit(beacon_id, data)
+
     def _on_error(self, ws, error):
         self.connection_error.emit(str(error))
 
@@ -354,6 +367,32 @@ class PandragonAPI(QObject):
             'type': 'delete_bof',
             'filename': filename,
         })
+
+    def update_bof_metadata(self, filename: str, **kwargs) -> dict:
+        msg = {'type': 'update_bof_metadata', 'filename': filename}
+        msg.update(kwargs)
+        return self._send_and_check(msg)
+
+    def verify_bof(self, filename: str) -> dict:
+        return self._send_request({'type': 'verify_bof', 'filename': filename})
+
+    def upload_source_bof(self, filename: str, data: str, build_command: str = '') -> dict:
+        return self._send_request({
+            'type': 'upload_source_bof',
+            'filename': filename,
+            'data': data,
+            'build_command': build_command,
+        })
+
+    def rebuild_bof_source(self, filename: str) -> dict:
+        return self._send_request({
+            'type': 'rebuild_bof_source',
+            'filename': filename,
+        })
+
+    def list_bof_sources(self) -> list:
+        result = self._send_request({'type': 'list_bof_sources'})
+        return result.get('sources', [])
 
     def execute_pe(self, beacon_id: str, pe_data_b64: str, pe_filename: str,
                    arch: int = 2, bypass: int = 3) -> dict:

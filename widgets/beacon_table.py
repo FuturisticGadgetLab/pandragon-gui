@@ -23,7 +23,7 @@ from gui.api_client import PandragonAPI
 from gui.dialogs.action_dialogs import (
     BOFExecDialog, ExecutePEDialog, InjectProcessDialog,
     FileDownloadDialog, FileUploadDialog, ListFilesDialog,
-    SleepDialog, ExitDialog,
+    SleepDialog,
 )
 from gui.widgets.notification_overlay import NotificationOverlay
 
@@ -578,7 +578,6 @@ class BeaconTableWidget(QWidget):
 
     def _handle_execute_pe(self, beacon_id: str, dlg):
         """Handle Execute PE - reads PE file, sends directly to server via execute_pe API."""
-        import base64
         try:
             file_path = dlg.get_file_path()
             with open(file_path, "rb") as f:

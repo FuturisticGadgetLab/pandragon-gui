@@ -10,8 +10,6 @@ from typing import Optional
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
 
 
 _STAGE_LABELS = {

@@ -7,16 +7,19 @@ embedded output viewer at the bottom. Supports copy-on-click,
 color-coded elevation, and auto-scroll toggle.
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
+
+logger = logging.getLogger('pandragon.gui.beacon_detail')
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QFormLayout, QLabel, QFrame, QGroupBox,
     QScrollArea, QTextEdit, QSplitter, QHBoxLayout, QPushButton, QComboBox,
-    QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit, QCheckBox,
+    QTableWidget, QTableWidgetItem, QLineEdit, QCheckBox,
     QApplication,
 )
-from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation
 from PyQt6.QtGui import QFont, QColor, QTextCursor
 
 from gui.api_client import PandragonAPI
@@ -266,8 +269,11 @@ class BeaconDetailWidget(QWidget):
 
         try:
             detail = self.api.get_beacon(beacon_id)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get beacon detail: {e}")
             self._clear_fields()
+            if self._notifications:
+                self._notifications.warning(f"Failed to load beacon detail: {e}", 4000)
             return
 
         self._set_field(self._identity_fields, "Beacon ID", detail.get("beacon_id", "-"))
@@ -333,8 +339,8 @@ class BeaconDetailWidget(QWidget):
                 )
             if self._auto_scroll:
                 self._scroll_to_end()
-        except Exception:
-            pass  # Silent fail; output is non-critical
+        except Exception as e:
+            logger.debug(f"Output refresh error: {e}")
 
     def refresh_async_bofs(self) -> None:
         if not self.current_beacon_id:
@@ -375,8 +381,8 @@ class BeaconDetailWidget(QWidget):
                 abort_btn.setObjectName("AbortBtn")
                 abort_btn.clicked.connect(lambda checked, tid=task_id: self._abort_async_bof(tid))
                 self.async_bof_table.setCellWidget(i, 4, abort_btn)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Async BOF refresh error: {e}")
 
     def _abort_async_bof(self, task_id: int) -> None:
         """Send ABORT signal to a specific async BOF."""

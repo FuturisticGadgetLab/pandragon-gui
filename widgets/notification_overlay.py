@@ -6,17 +6,14 @@ and auto-dismiss after a configurable timeout. Non-blocking replacement
 for QMessageBox informational/warning messages.
 """
 
-import time
 from typing import Optional
-from collections import deque
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QApplication,
-    QSizePolicy,
+    QWidget, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
 )
 from PyQt6.QtCore import (
-    Qt, QTimer, QPropertyAnimation, QEasingCurve, QParallelAnimationGroup,
-    QPoint, QRect, pyqtSignal,
+    Qt, QTimer, QPropertyAnimation, QEasingCurve,
+    QPoint, pyqtSignal,
 )
 from PyQt6.QtGui import QFont, QColor, QPainter
 

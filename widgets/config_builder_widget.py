@@ -10,14 +10,14 @@ import json
 import os
 import sys
 import tempfile
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from datetime import datetime, timezone
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QLabel, QLineEdit, QSpinBox, QComboBox, QCheckBox,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QTabWidget, QScrollArea, QTextEdit, QSplitter,
+    QTabWidget, QScrollArea, QTextEdit,
     QDialog, QDialogButtonBox, QMessageBox, QFileDialog,
     QDateEdit, QProgressBar, QListWidget, QListWidgetItem, QStyledItemDelegate,
     QStyle, QInputDialog
@@ -26,6 +26,86 @@ from PyQt6.QtCore import Qt, QDate, QThread, pyqtSignal, QObject, QRectF, QSize
 from PyQt6.QtGui import (
     QFont, QPainter, QColor, QPen, QPainterPath, QPalette,
 )
+
+# ---------------------------------------------------------------------------
+# Schema loading
+# ---------------------------------------------------------------------------
+
+_SCHEMA_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..",
+    "Beacon", "config", "schema.json",
+)
+
+def _load_schema() -> dict:
+    try:
+        with open(_SCHEMA_PATH) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+_SCHEMA = _load_schema()
+_PROPS = _SCHEMA.get("properties", {})
+
+def _prop_schema(prop_name: str) -> dict:
+    return _PROPS.get(prop_name, {})
+
+def _create_schema_widget(prop_schema: dict, value=None):
+    typ = prop_schema.get("type")
+    default = prop_schema.get("default")
+    desc = prop_schema.get("description", "")
+    current = value if value is not None else default
+
+    if typ == "boolean":
+        w = QCheckBox(desc)
+        if current is not None:
+            w.setChecked(bool(current))
+        return w
+
+    if typ == "integer":
+        w = QSpinBox()
+        w.setRange(prop_schema.get("minimum", 0), prop_schema.get("maximum", 2**31 - 1))
+        w.setToolTip(desc)
+        val = int(current) if current is not None else 0
+        w.setValue(val)
+        return w
+
+    if typ == "string" and "enum" in prop_schema:
+        w = QComboBox()
+        w.addItems(prop_schema["enum"])
+        if current is not None:
+            w.setCurrentText(str(current))
+        w.setToolTip(desc)
+        return w
+
+    if typ == "string":
+        w = QLineEdit()
+        w.setPlaceholderText(desc)
+        if current is not None:
+            w.setText(str(current))
+        return w
+
+    return QLabel(f"(unsupported schema type: {typ})")
+
+def _schema_widget_value(w):
+    if isinstance(w, QCheckBox):
+        return w.isChecked()
+    if isinstance(w, QSpinBox):
+        return w.value()
+    if isinstance(w, QComboBox):
+        return w.currentText()
+    if isinstance(w, QLineEdit):
+        return w.text().strip()
+    return None
+
+def _schema_widget_set(w, value):
+    if isinstance(w, QCheckBox):
+        w.setChecked(bool(value) if value is not None else False)
+    elif isinstance(w, QSpinBox):
+        w.setValue(int(value) if value is not None else 0)
+    elif isinstance(w, QComboBox):
+        w.setCurrentText(str(value) if value is not None else "")
+    elif isinstance(w, QLineEdit):
+        w.setText(str(value) if value is not None else "")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -107,58 +187,134 @@ class _C2ChannelDialog(QDialog):
     def __init__(self, channel: Optional[dict] = None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("C2 Channel")
-        self.setMinimumWidth(450)
+        self.setMinimumWidth(520)
         self._channel = channel or {}
 
-        layout = QFormLayout(self)
+        tabs = QTabWidget(self)
+        main_tab = QWidget()
+        malleable_tab = QWidget()
+
+        # ── Main tab ─────────────────────────────────────────────
+        main_layout = QFormLayout(main_tab)
 
         self._type = QComboBox()
         self._type.addItems(["HTTP", "HTTPS", "TCP", "PIPE"])
         self._type.setCurrentText(self._channel.get("type", "HTTPS"))
-        layout.addRow("Type", self._type)
+        self._type.currentTextChanged.connect(self._on_type_changed)
+        main_layout.addRow("Type", self._type)
 
         self._host = QLineEdit(self._channel.get("host", ""))
         self._host.setPlaceholderText("127.0.0.1")
-        layout.addRow("Host", self._host)
+        main_layout.addRow("Host", self._host)
 
         self._port = QSpinBox()
         self._port.setRange(1, 65535)
         self._port.setValue(self._channel.get("port", 6767))
-        layout.addRow("Port", self._port)
+        main_layout.addRow("Port", self._port)
 
         self._path = QLineEdit(self._channel.get("path", ""))
         self._path.setPlaceholderText("/api/checkin")
-        layout.addRow("Path", self._path)
+        main_layout.addRow("Path", self._path)
 
         self._ua = QLineEdit(self._channel.get("user_agent", ""))
         self._ua.setPlaceholderText("Mozilla/5.0 ...")
-        layout.addRow("User-Agent", self._ua)
+        main_layout.addRow("User-Agent", self._ua)
 
         self._method = QComboBox()
         self._method.addItems(["GET", "POST"])
         self._method.setCurrentText(self._channel.get("http_method", "POST"))
-        layout.addRow("HTTP Method", self._method)
+        main_layout.addRow("HTTP Method", self._method)
 
         self._max_fail = QSpinBox()
         self._max_fail.setRange(1, 100)
         self._max_fail.setValue(self._channel.get("max_consecutive_failures", 5))
-        layout.addRow("Max Failures", self._max_fail)
+        main_layout.addRow("Max Failures", self._max_fail)
 
         self._backoff = QSpinBox()
         self._backoff.setRange(1000, 300000)
         self._backoff.setSingleStep(1000)
         self._backoff.setValue(self._channel.get("backoff_sleep_ms", 10000))
-        layout.addRow("Backoff (ms)", self._backoff)
+        main_layout.addRow("Backoff (ms)", self._backoff)
+
+        # ── Malleable tab ────────────────────────────────────────
+        malleable_layout = QFormLayout(malleable_tab)
+
+        mc = self._channel.get("malleable_config", {})
+
+        self._mc_enabled = QCheckBox("Override global malleable config for this channel")
+        self._mc_enabled.setChecked("malleable_config" in self._channel)
+        self._mc_enabled.toggled.connect(self._on_mc_toggled)
+        malleable_layout.addRow(self._mc_enabled)
+
+        wrapper = mc.get("wrapper", {})
+        self._mc_prefix = QLineEdit(wrapper.get("prefix", ""))
+        self._mc_prefix.setPlaceholderText("REQ_${RAND_B64:4}_")
+        self._mc_prefix.setEnabled(self._mc_enabled.isChecked())
+        malleable_layout.addRow("Wrapper Prefix", self._mc_prefix)
+
+        self._mc_suffix = QLineEdit(wrapper.get("suffix", ""))
+        self._mc_suffix.setPlaceholderText("_${JUNK:8}")
+        self._mc_suffix.setEnabled(self._mc_enabled.isChecked())
+        malleable_layout.addRow("Wrapper Suffix", self._mc_suffix)
+
+        pl = mc.get("payload_location", {})
+        self._mc_pl_type = QComboBox()
+        self._mc_pl_type.addItems(["query_param", "path", "body"])
+        self._mc_pl_type.setCurrentText(pl.get("type", "body"))
+        self._mc_pl_type.setEnabled(self._mc_enabled.isChecked())
+        malleable_layout.addRow("Payload Location", self._mc_pl_type)
+
+        self._mc_pl_param = QLineEdit(pl.get("param_name", "q"))
+        self._mc_pl_param.setPlaceholderText("param_name for query_param type")
+        self._mc_pl_param.setEnabled(self._mc_enabled.isChecked())
+        malleable_layout.addRow("Param Name", self._mc_pl_param)
+
+        self._mc_pl_path_prefix = QLineEdit(pl.get("path_prefix", ""))
+        self._mc_pl_path_prefix.setPlaceholderText("/api/")
+        self._mc_pl_path_prefix.setEnabled(self._mc_enabled.isChecked())
+        malleable_layout.addRow("Path Prefix", self._mc_pl_path_prefix)
+
+        self._mc_pl_path_suffix = QLineEdit(pl.get("path_suffix", ".png"))
+        self._mc_pl_path_suffix.setEnabled(self._mc_enabled.isChecked())
+        malleable_layout.addRow("Path Suffix", self._mc_pl_path_suffix)
+
+        self._mc_pl_body_ct = QComboBox()
+        self._mc_pl_body_ct.addItems(["text/plain", "application/octet-stream"])
+        self._mc_pl_body_ct.setCurrentText(pl.get("body_content_type", "text/plain"))
+        self._mc_pl_body_ct.setEnabled(self._mc_enabled.isChecked())
+        malleable_layout.addRow("Body Content-Type", self._mc_pl_body_ct)
+
+        note = QLabel("Custom HTTP headers per-channel: set in the Malleable C2 tab after saving.")
+        note.setWordWrap(True)
+        note.setObjectName("mutedLabel")
+        malleable_layout.addRow(note)
+
+        # ── Assemble ─────────────────────────────────────────────
+        tabs.addTab(main_tab, "General")
+        tabs.addTab(malleable_tab, "Malleable")
+
+        outer = QVBoxLayout(self)
+        outer.addWidget(tabs)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addRow(buttons)
+        outer.addWidget(buttons)
+
+    def _on_type_changed(self, ch_type: str):
+        is_http = ch_type in ("HTTP", "HTTPS")
+        self._method.setEnabled(is_http)
+
+    def _on_mc_toggled(self, enabled: bool):
+        for w in (self._mc_prefix, self._mc_suffix, self._mc_pl_type,
+                  self._mc_pl_param, self._mc_pl_path_prefix,
+                  self._mc_pl_path_suffix, self._mc_pl_body_ct):
+            w.setEnabled(enabled)
 
     def get_channel(self) -> dict:
-        return {
+        ch = {
             "type": self._type.currentText(),
             "host": self._host.text().strip(),
             "port": self._port.value(),
@@ -168,6 +324,21 @@ class _C2ChannelDialog(QDialog):
             "max_consecutive_failures": self._max_fail.value(),
             "backoff_sleep_ms": self._backoff.value(),
         }
+        if self._mc_enabled.isChecked():
+            ch["malleable_config"] = {
+                "wrapper": {
+                    "prefix": self._mc_prefix.text().strip(),
+                    "suffix": self._mc_suffix.text().strip(),
+                },
+                "payload_location": {
+                    "type": self._mc_pl_type.currentText(),
+                    "param_name": self._mc_pl_param.text().strip(),
+                    "path_prefix": self._mc_pl_path_prefix.text().strip(),
+                    "path_suffix": self._mc_pl_path_suffix.text().strip(),
+                    "body_content_type": self._mc_pl_body_ct.currentText(),
+                },
+            }
+        return ch
 
 
 # ---------------------------------------------------------------------------
@@ -490,6 +661,7 @@ class ConfigBuilderWidget(QWidget):
         self._worker: Optional[_BuildWorker] = None
         self._thread: Optional[QThread] = None
         self._api: Optional[object] = None
+        self._fields: dict = {}
 
         self._build_config()
 
@@ -553,9 +725,9 @@ class ConfigBuilderWidget(QWidget):
         tab.setObjectName("configTab")
         layout = QVBoxLayout(tab)
 
-        self._channels_table = QTableWidget(0, 5)
+        self._channels_table = QTableWidget(0, 6)
         self._channels_table.setHorizontalHeaderLabels(
-            ["Type", "Host", "Port", "Path", "Method"]
+            ["Type", "Host", "Port", "Path", "Method", "Malleable"]
         )
         self._channels_table.horizontalHeader().setStretchLastSection(True)
         self._channels_table.setSelectionBehavior(
@@ -623,7 +795,10 @@ class ConfigBuilderWidget(QWidget):
             self._channels_table.setItem(
                 i, 4, QTableWidgetItem(ch.get("http_method", ""))
             )
-        # Keep preview channel dropdown in sync
+            has_mc = "malleable_config" in ch and ch["malleable_config"]
+            mc_item = QTableWidgetItem("✓" if has_mc else "")
+            mc_item.setToolTip("Per-channel malleable config set" if has_mc else "")
+            self._channels_table.setItem(i, 5, mc_item)
         self._populate_preview_channels()
 
     # ── Tab 2: Timing & Obfuscation ─────────────────────────────────
@@ -640,31 +815,33 @@ class ConfigBuilderWidget(QWidget):
         # Timing
         timing_group = QGroupBox("Timing")
         timing_form = QFormLayout(timing_group)
+        for name in ("sleep_ms", "jitter_pct"):
+            ps = _prop_schema(name)
+            w = _create_schema_widget(ps, self._config.get(name))
+            if name == "jitter_pct":
+                w.setSuffix("%")
+            self._fields[name] = w
+            timing_form.addRow(ps.get("description", name), w)
 
-        self._sleep_ms = QSpinBox()
-        self._sleep_ms.setRange(100, 3600000)
-        self._sleep_ms.setSingleStep(100)
-        self._sleep_ms.setValue(5000)
-        timing_form.addRow("Sleep (ms)", self._sleep_ms)
+        pad_w = _create_schema_widget(_prop_schema("pad"), self._config.get("pad"))
+        self._fields["pad"] = pad_w
+        timing_form.addRow(pad_w)
 
-        self._jitter_pct = QSpinBox()
-        self._jitter_pct.setRange(0, 100)
-        self._jitter_pct.setSuffix("%")
-        self._jitter_pct.setValue(20)
-        timing_form.addRow("Jitter", self._jitter_pct)
-
-        self._pad = QCheckBox("Enable PKCS#7 padding")
-        timing_form.addRow(self._pad)
-
-        self._pad_max = QSpinBox()
-        self._pad_max.setRange(0, 65535)
-        self._pad_max.setValue(1024)
-        timing_form.addRow("Pad Max (bytes)", self._pad_max)
+        pad_max_w = _create_schema_widget(_prop_schema("pad_max"), self._config.get("pad_max"))
+        self._fields["pad_max"] = pad_max_w
+        timing_form.addRow("Max Pad (bytes)", pad_max_w)
 
         self._kill_date = QDateEdit()
         self._kill_date.setCalendarPopup(True)
         self._kill_date.setDate(QDate.currentDate().addYears(1))
         self._kill_date.setSpecialValueText("None")
+        kd = self._config.get("kill_date", "")
+        if kd:
+            try:
+                dt = datetime.strptime(kd, "%Y-%m-%d")
+                self._kill_date.setDate(QDate(dt.year, dt.month, dt.day))
+            except ValueError:
+                pass
         timing_form.addRow("Kill Date", self._kill_date)
 
         layout.addWidget(timing_group)
@@ -673,39 +850,36 @@ class ConfigBuilderWidget(QWidget):
         obf_group = QGroupBox("Sleep Obfuscation")
         obf_form = QFormLayout(obf_group)
 
-        self._sleep_obf = QComboBox()
-        self._sleep_obf.addItems(["none", "ekko", "foliage"])
-        self._sleep_obf.currentTextChanged.connect(self._update_conditional_visibility)
-        obf_form.addRow("Method", self._sleep_obf)
+        sleep_obf_w = _create_schema_widget(_prop_schema("sleep_obfuscation"), self._config.get("sleep_obfuscation"))
+        self._fields["sleep_obfuscation"] = sleep_obf_w
+        sleep_obf_w.currentTextChanged.connect(self._update_conditional_visibility)
+        obf_form.addRow("Method", sleep_obf_w)
 
-        self._wipe_pe = QCheckBox("Wipe PE headers during sleep")
-        obf_form.addRow(self._wipe_pe)
+        wipe_pe_w = _create_schema_widget(_prop_schema("sleep_wipe_pe_headers"), self._config.get("sleep_wipe_pe_headers"))
+        self._fields["sleep_wipe_pe_headers"] = wipe_pe_w
+        obf_form.addRow(wipe_pe_w)
 
-        # Stack spoofing row (shown only when method != "none")
         self._stack_spoof_row = QWidget()
         stack_spoof_layout = QHBoxLayout(self._stack_spoof_row)
         stack_spoof_layout.setContentsMargins(0, 0, 0, 0)
-        self._stack_spoof = QCheckBox("Enable stack spoofing")
-        stack_spoof_layout.addWidget(self._stack_spoof)
+        stack_spoof_w = _create_schema_widget(_prop_schema("sleep_stack_spoof"), self._config.get("sleep_stack_spoof"))
+        self._fields["sleep_stack_spoof"] = stack_spoof_w
+        stack_spoof_layout.addWidget(stack_spoof_w)
         stack_spoof_layout.addStretch()
         self._stack_spoof_row.setVisible(False)
         obf_form.addRow(self._stack_spoof_row)
+        stack_spoof_w.toggled.connect(self._update_conditional_visibility)
 
-        # Num Spoof Frames row (shown only when stack spoofing enabled)
         self._num_frames_row = QWidget()
         num_frames_layout = QHBoxLayout(self._num_frames_row)
         num_frames_layout.setContentsMargins(0, 0, 0, 0)
-        self._num_frames = QSpinBox()
-        self._num_frames.setRange(0, 65535)
-        self._num_frames.setValue(6)
-        self._num_frames.setToolTip("0 = use default of 6")
+        num_frames_w = _create_schema_widget(_prop_schema("num_spoof_frames"), self._config.get("num_spoof_frames"))
+        self._fields["num_spoof_frames"] = num_frames_w
         num_frames_layout.addWidget(QLabel("Num Spoof Frames"))
-        num_frames_layout.addWidget(self._num_frames)
+        num_frames_layout.addWidget(num_frames_w)
         num_frames_layout.addStretch()
         self._num_frames_row.setVisible(False)
         obf_form.addRow(self._num_frames_row)
-
-        self._stack_spoof.toggled.connect(self._update_conditional_visibility)
 
         layout.addWidget(obf_group)
 
@@ -713,80 +887,72 @@ class ConfigBuilderWidget(QWidget):
         sys_group = QGroupBox("Indirect Syscalls")
         sys_form = QFormLayout(sys_group)
 
-        self._indirect_sys = QCheckBox("Use indirect syscalls")
-        self._indirect_sys.toggled.connect(self._update_conditional_visibility)
-        sys_form.addRow(self._indirect_sys)
+        indirect_sys_w = _create_schema_widget(_prop_schema("use_indirect_syscalls"), self._config.get("use_indirect_syscalls"))
+        self._fields["use_indirect_syscalls"] = indirect_sys_w
+        indirect_sys_w.toggled.connect(self._update_conditional_visibility)
+        sys_form.addRow(indirect_sys_w)
 
-        # Pivot API row (shown only when indirect syscalls enabled)
         self._pivot_row = QWidget()
         pivot_layout = QHBoxLayout(self._pivot_row)
         pivot_layout.setContentsMargins(0, 0, 0, 0)
-        self._pivot = QLineEdit()
-        self._pivot.setPlaceholderText("ZwSetDefaultLocale")
+        pivot_w = _create_schema_widget(_prop_schema("indirect_syscall_pivot"), self._config.get("indirect_syscall_pivot"))
+        self._fields["indirect_syscall_pivot"] = pivot_w
         pivot_layout.addWidget(QLabel("Pivot API"))
-        pivot_layout.addWidget(self._pivot)
+        pivot_layout.addWidget(pivot_w)
         pivot_layout.addStretch()
         self._pivot_row.setVisible(False)
         sys_form.addRow(self._pivot_row)
 
-        self._lazy_checkin = QCheckBox("Lazy check-in")
-        self._lazy_checkin.toggled.connect(self._update_conditional_visibility)
-        sys_form.addRow(self._lazy_checkin)
+        lazy_ci_w = _create_schema_widget(_prop_schema("lazy_checkin"), self._config.get("lazy_checkin"))
+        self._fields["lazy_checkin"] = lazy_ci_w
+        lazy_ci_w.toggled.connect(self._update_conditional_visibility)
+        sys_form.addRow(lazy_ci_w)
 
-        # Lazy Check-in Max row (shown only when lazy check-in enabled)
         self._lazy_checkin_max_row = QWidget()
         lazy_max_layout = QHBoxLayout(self._lazy_checkin_max_row)
         lazy_max_layout.setContentsMargins(0, 0, 0, 0)
-        self._lazy_checkin_max = QSpinBox()
-        self._lazy_checkin_max.setRange(1, 255)
-        self._lazy_checkin_max.setValue(2)
+        lazy_max_w = _create_schema_widget(_prop_schema("lazy_checkin_max"), self._config.get("lazy_checkin_max"))
+        self._fields["lazy_checkin_max"] = lazy_max_w
         lazy_max_layout.addWidget(QLabel("Lazy Check-in Max"))
-        lazy_max_layout.addWidget(self._lazy_checkin_max)
+        lazy_max_layout.addWidget(lazy_max_w)
         lazy_max_layout.addStretch()
         self._lazy_checkin_max_row.setVisible(False)
         sys_form.addRow(self._lazy_checkin_max_row)
 
-        self._lazy_unhook = QCheckBox("Lazy unhook (transparent)")
-        sys_form.addRow(self._lazy_unhook)
+        lazy_uh_w = _create_schema_widget(_prop_schema("lazy_unhook"), self._config.get("lazy_unhook"))
+        self._fields["lazy_unhook"] = lazy_uh_w
+        sys_form.addRow(lazy_uh_w)
 
         layout.addWidget(sys_group)
 
-        # Options
+        # Options (sub-object)
         opt_group = QGroupBox("Options")
         opt_form = QFormLayout(opt_group)
-
-        self._opt_sandbox = QCheckBox("Sandbox evasion")
-        opt_form.addRow(self._opt_sandbox)
-
-        self._opt_debug = QCheckBox("Debug mode")
-        opt_form.addRow(self._opt_debug)
-
-        self._opt_bypass_etw = QCheckBox("Bypass ETW")
-        opt_form.addRow(self._opt_bypass_etw)
-
-        self._opt_validate_ssl = QCheckBox("Validate SSL")
-        opt_form.addRow(self._opt_validate_ssl)
+        opt_schema = _prop_schema("options")
+        for opt_name in ("sandbox_evasion", "debug_mode", "bypass_etw", "validate_ssl"):
+            sub = opt_schema.get("properties", {}).get(opt_name, {})
+            val = self._config.get("options", {}).get(opt_name)
+            w = _create_schema_widget(sub, val)
+            self._fields[f"options.{opt_name}"] = w
+            opt_form.addRow(w)
 
         layout.addWidget(opt_group)
 
         layout.addStretch()
         scroll.setWidget(container)
-        # Initial conditional visibility
         self._update_conditional_visibility()
         return scroll
 
     def _update_conditional_visibility(self):
-        """Show/hide conditional fields based on current widget state."""
-        # Stack spoofing fields: visible when sleep obf method != "none"
-        obf_method = self._sleep_obf.currentText()
+        obf_method = _schema_widget_value(self._fields.get("sleep_obfuscation", QComboBox()))
+        stack_spoof = _schema_widget_value(self._fields.get("sleep_stack_spoof", QCheckBox()))
+        indirect_sys = _schema_widget_value(self._fields.get("use_indirect_syscalls", QCheckBox()))
+        lazy_ci = _schema_widget_value(self._fields.get("lazy_checkin", QCheckBox()))
+
         self._stack_spoof_row.setVisible(obf_method != "none")
-        self._num_frames_row.setVisible(obf_method != "none" and self._stack_spoof.isChecked())
-
-        # Pivot API: visible when indirect syscalls enabled
-        self._pivot_row.setVisible(self._indirect_sys.isChecked())
-
-        # Lazy Check-in Max: visible when lazy check-in enabled
-        self._lazy_checkin_max_row.setVisible(self._lazy_checkin.isChecked())
+        self._num_frames_row.setVisible(obf_method != "none" and stack_spoof)
+        self._pivot_row.setVisible(bool(indirect_sys))
+        self._lazy_checkin_max_row.setVisible(bool(lazy_ci))
 
     # ── Tab 3: Stack Spoof Chain ────────────────────────────────────
 
@@ -1211,49 +1377,34 @@ class ConfigBuilderWidget(QWidget):
         container.setObjectName("configTab")
         layout = QVBoxLayout(container)
 
-        # Work hours
+        # Work hours (generated from schema)
         wh_group = QGroupBox("Work Hours (UTC)")
         wh_form = QFormLayout(wh_group)
-
-        self._wh_enabled = QCheckBox("Enable work hours enforcement")
-        wh_form.addRow(self._wh_enabled)
-
-        self._wh_start_h = QSpinBox()
-        self._wh_start_h.setRange(0, 23)
-        self._wh_start_h.setValue(9)
-        wh_form.addRow("Start Hour", self._wh_start_h)
-
-        self._wh_start_m = QSpinBox()
-        self._wh_start_m.setRange(0, 59)
-        self._wh_start_m.setValue(0)
-        wh_form.addRow("Start Minute", self._wh_start_m)
-
-        self._wh_end_h = QSpinBox()
-        self._wh_end_h.setRange(0, 23)
-        self._wh_end_h.setValue(17)
-        wh_form.addRow("End Hour", self._wh_end_h)
-
-        self._wh_end_m = QSpinBox()
-        self._wh_end_m.setRange(0, 59)
-        self._wh_end_m.setValue(0)
-        wh_form.addRow("End Minute", self._wh_end_m)
-
-        self._wh_insomnia = QCheckBox("Insomnia (skip check-in, don't sleep)")
-        wh_form.addRow(self._wh_insomnia)
+        wh_schema = _prop_schema("work_hours").get("properties", {})
+        wh_cfg = self._config.get("work_hours", {})
+        for wh_name in ("enabled", "start_hour", "start_minute", "end_hour", "end_minute", "insomnia"):
+            sub = wh_schema.get(wh_name, {})
+            val = wh_cfg.get(wh_name)
+            w = _create_schema_widget(sub, val)
+            self._fields[f"work_hours.{wh_name}"] = w
+            if sub.get("type") == "boolean":
+                wh_form.addRow(w)
+            else:
+                wh_form.addRow(sub.get("description", wh_name), w)
 
         layout.addWidget(wh_group)
 
-        # Spawn-to
+        # Spawn-to (generated from schema)
         st_group = QGroupBox("Spawn-to Process")
         st_form = QFormLayout(st_group)
-
-        self._st_x64 = QLineEdit()
-        self._st_x64.setPlaceholderText("C:\\Windows\\System32\\rundll32.exe")
-        st_form.addRow("x64 Path", self._st_x64)
-
-        self._st_x86 = QLineEdit()
-        self._st_x86.setPlaceholderText("C:\\Windows\\SysWOW64\\rundll32.exe")
-        st_form.addRow("x86 Path", self._st_x86)
+        st_schema = _prop_schema("spawnto").get("properties", {})
+        st_cfg = self._config.get("spawnto", {})
+        for st_name in ("x64", "x86"):
+            sub = st_schema.get(st_name, {})
+            val = st_cfg.get(st_name)
+            w = _create_schema_widget(sub, val)
+            self._fields[f"spawnto.{st_name}"] = w
+            st_form.addRow(sub.get("description", st_name), w)
 
         layout.addWidget(st_group)
         layout.addStretch()
@@ -1387,7 +1538,6 @@ class ConfigBuilderWidget(QWidget):
         ctrl_row.addWidget(self._preview_mode_label)
 
         # Request display
-        from PyQt6.QtWidgets import QTextEdit
         self._preview_text = QTextEdit()
         self._preview_text.setReadOnly(True)
         self._preview_text.setFont(QFont("Consolas", 9))
@@ -1707,14 +1857,18 @@ class ConfigBuilderWidget(QWidget):
     # ── Config I/O ──────────────────────────────────────────────────
 
     def _sync_form_to_config(self):
-        """Pull current widget values into self._config dict."""
+        """Pull current widget values into self._config dict using schema field map."""
         c = self._config
 
-        c["sleep_ms"] = self._sleep_ms.value()
-        c["jitter_pct"] = self._jitter_pct.value()
-        c["pad"] = self._pad.isChecked()
-        c["pad_max"] = self._pad_max.value()
+        for path, w in self._fields.items():
+            val = _schema_widget_value(w)
+            parts = path.split(".")
+            parent = c
+            for p in parts[:-1]:
+                parent = parent.setdefault(p, {})
+            parent[parts[-1]] = val
 
+        # Kill date (special: QDateEdit)
         kd = self._kill_date.date()
         if kd.isValid() and kd != QDate.currentDate().addYears(1):
             dt = datetime(kd.year(), kd.month(), kd.day(), tzinfo=timezone.utc)
@@ -1722,25 +1876,8 @@ class ConfigBuilderWidget(QWidget):
         else:
             c["kill_date"] = ""
 
-        c["sleep_obfuscation"] = self._sleep_obf.currentText()
-        c["sleep_wipe_pe_headers"] = self._wipe_pe.isChecked()
-        c["sleep_stack_spoof"] = self._stack_spoof.isChecked()
-        c["num_spoof_frames"] = self._num_frames.value()
-
-        c["use_indirect_syscalls"] = self._indirect_sys.isChecked()
-        c["indirect_syscall_pivot"] = self._pivot.text().strip()
-        c["lazy_checkin"] = self._lazy_checkin.isChecked()
-        c["lazy_checkin_max"] = self._lazy_checkin_max.value()
-        c["lazy_unhook"] = self._lazy_unhook.isChecked()
-
-        c.setdefault("options", {})
-        c["options"]["sandbox_evasion"] = self._opt_sandbox.isChecked()
-        c["options"]["debug_mode"] = self._opt_debug.isChecked()
-        c["options"]["bypass_etw"] = self._opt_bypass_etw.isChecked()
-        c["options"]["validate_ssl"] = self._opt_validate_ssl.isChecked()
-
+        # Malleable (per-channel + global)
         c.setdefault("malleable_config", {})
-        # Sync malleable tab fields to the currently selected target (channel or global)
         mc, _ = self._get_malleable_target()
         mc.setdefault("wrapper", {})
         mc["wrapper"]["prefix"] = self._wrap_prefix.text().strip()
@@ -1752,30 +1889,23 @@ class ConfigBuilderWidget(QWidget):
         mc["payload_location"]["path_suffix"] = self._pl_path_suffix.text().strip()
         mc["payload_location"]["body_content_type"] = self._pl_body_ct.currentText()
 
-        c.setdefault("work_hours", {})
-        c["work_hours"]["enabled"] = self._wh_enabled.isChecked()
-        c["work_hours"]["start_hour"] = self._wh_start_h.value()
-        c["work_hours"]["start_minute"] = self._wh_start_m.value()
-        c["work_hours"]["end_hour"] = self._wh_end_h.value()
-        c["work_hours"]["end_minute"] = self._wh_end_m.value()
-        c["work_hours"]["insomnia"] = self._wh_insomnia.isChecked()
-
-        c.setdefault("spawnto", {})
-        c["spawnto"]["x64"] = self._st_x64.text().strip()
-        c["spawnto"]["x86"] = self._st_x86.text().strip()
-
+        # Post-build + in-memory append
         c["post_build"] = {"append": [self._post_append_list.item(i).text() for i in range(self._post_append_list.count())]}
         c["in_memory_append"] = {"append": [self._inmem_append_list.item(i).text() for i in range(self._inmem_append_list.count())]}
 
     def _sync_config_to_form(self):
-        """Populate widget values from self._config dict."""
+        """Populate widget values from self._config dict using schema field map."""
         c = self._config
 
-        self._sleep_ms.setValue(c.get("sleep_ms", 5000))
-        self._jitter_pct.setValue(c.get("jitter_pct", 20))
-        self._pad.setChecked(c.get("pad", False))
-        self._pad_max.setValue(c.get("pad_max", 1024))
+        for path, w in self._fields.items():
+            parts = path.split(".")
+            parent = c
+            for p in parts[:-1]:
+                parent = parent.get(p, {})
+            val = parent.get(parts[-1])
+            _schema_widget_set(w, val)
 
+        # Kill date
         kd_str = c.get("kill_date", "")
         if kd_str:
             try:
@@ -1786,54 +1916,20 @@ class ConfigBuilderWidget(QWidget):
         else:
             self._kill_date.setDate(QDate.currentDate().addYears(1))
 
-        self._sleep_obf.setCurrentText(c.get("sleep_obfuscation", "none"))
-        self._wipe_pe.setChecked(c.get("sleep_wipe_pe_headers", False))
-        self._stack_spoof.setChecked(c.get("sleep_stack_spoof", False))
-        self._num_frames.setValue(c.get("num_spoof_frames", 6))
-
-        self._indirect_sys.setChecked(c.get("use_indirect_syscalls", False))
-        self._pivot.setText(c.get("indirect_syscall_pivot", ""))
-        self._lazy_checkin.setChecked(c.get("lazy_checkin", False))
-        self._lazy_checkin_max.setValue(c.get("lazy_checkin_max", 2))
-        self._lazy_unhook.setChecked(c.get("lazy_unhook", False))
-
-        opts = c.get("options", {})
-        self._opt_sandbox.setChecked(opts.get("sandbox_evasion", False))
-        self._opt_debug.setChecked(opts.get("debug_mode", False))
-        self._opt_bypass_etw.setChecked(opts.get("bypass_etw", False))
-        self._opt_validate_ssl.setChecked(opts.get("validate_ssl", False))
-
-        # Populate malleable tab from currently selected target
+        # Malleable
         self._populate_malleable_channels()
         self._refresh_malleable_fields()
-
-        # Update conditional visibility after loading config values
         self._update_conditional_visibility()
 
-        wh = c.get("work_hours", {})
-        self._wh_enabled.setChecked(wh.get("enabled", False))
-        self._wh_start_h.setValue(wh.get("start_hour", 9))
-        self._wh_start_m.setValue(wh.get("start_minute", 0))
-        self._wh_end_h.setValue(wh.get("end_hour", 17))
-        self._wh_end_m.setValue(wh.get("end_minute", 0))
-        self._wh_insomnia.setChecked(wh.get("insomnia", False))
-
-        st = c.get("spawnto", {})
-        self._st_x64.setText(st.get("x64", ""))
-        self._st_x86.setText(st.get("x86", ""))
-
-        # Post-Build Append
+        # Post-build + in-memory append
         self._post_append_list.clear()
-        post_build = c.get("post_build", {})
-        for s in post_build.get("append", []):
+        for s in c.get("post_build", {}).get("append", []):
             self._post_append_list.addItem(s)
-
-        # In-Memory Append
         self._inmem_append_list.clear()
-        inmem = c.get("in_memory_append", {})
-        for s in inmem.get("append", []):
+        for s in c.get("in_memory_append", {}).get("append", []):
             self._inmem_append_list.addItem(s)
 
+        # Refresh complex widgets
         self._refresh_channels_table()
         self._refresh_chain_stack()
         self._refresh_headers_table()

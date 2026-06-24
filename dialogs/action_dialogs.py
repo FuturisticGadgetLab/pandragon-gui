@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QDialog, QFormLayout, QLineEdit, QComboBox, QSpinBox, QHBoxLayout,
-    QDialogButtonBox, QMessageBox, QLabel, QCheckBox, QPushButton,
+    QDialogButtonBox, QMessageBox, QLabel, QPushButton,
     QFileDialog,
 )
 from PyQt6.QtGui import QFont

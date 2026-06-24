@@ -5,7 +5,7 @@ Brutalist flat panel with disconnect, quit, and theme switching.
 """
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox,
+    QWidget, QVBoxLayout, QPushButton, QLabel,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont

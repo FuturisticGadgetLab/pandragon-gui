@@ -37,7 +37,6 @@ run: venv
 	@$(VENV)/bin/python run_gui.py
 
 clean:
-	rm -rf $(VENV)
 	find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 	rm -f *.log
 	@echo "[+] GUI clean complete"

@@ -10,7 +10,7 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QLineEdit, QCheckBox, QPushButton,
-    QStackedWidget, QFrame, QMessageBox, QSizePolicy,
+    QStackedWidget, QMessageBox,
 )
 from PyQt6.QtCore import (
     Qt, QTimer, QPropertyAnimation, QEasingCurve, QParallelAnimationGroup,
@@ -104,6 +104,17 @@ _CANCEL_BTN_STYLE = (
 _PROGRESS_STYLE = (
     "QWidget#SplashScreen { background: transparent; }"
 )
+
+_STATUS_QUIPS = [
+    "beacon watch -- all quiet",
+    "PANDRAGON OS // FGL // LINK ACTIVE",
+    "\u201cthe bird of Hermes is my Name\u201d",
+    "FGL terminal :: session active",
+    "watching the web \u2026",
+    "PANDRAGON v2.1 // SEVASTOPOL LINK",
+    "\u2014 operator, the beacons are lit \u2014",
+    "all quiet on the western front",
+]
 
 
 class ConnectPanel(QWidget):
@@ -254,7 +265,7 @@ class ConnectPanel(QWidget):
         self._connect_btn.setText("CONNECT")
         self._connect_btn.setEnabled(True)
         self._progress.clear_stages()
-        self._progress.add_stage("Connection cancelled", "info")
+        self._progress.add_stage("> CONNECTION TERMINATED", "info")
 
     def _do_connect(self):
         url = self._url.text().strip()
@@ -268,8 +279,8 @@ class ConnectPanel(QWidget):
             return
 
         self._progress.clear_stages()
-        self._progress.add_stage("Connecting to teamserver...", "busy")
-        self._progress.add_stage("Authenticating...", "busy")
+        self._progress.add_stage("> INITIALIZING PANDRAGON LINK...", "busy")
+        self._progress.add_stage("> AUTHENTICATING OPERATOR...", "busy")
 
         self._connect_btn.setText("CONNECTING...")
         self._connect_btn.setEnabled(False)
@@ -290,16 +301,16 @@ class ConnectPanel(QWidget):
             msg = auth_error[0] or "Failed to authenticate"
             self._progress.clear_stages()
             self._progress.add_stage(msg, "fail")
-            self._progress.add_stage("Check your connection details and try again", "info")
+            self._progress.add_stage("> CHECK CONNECTION DETAILS", "info")
             self._connect_btn.setText("CONNECT")
             self._connect_btn.setEnabled(True)
             self._cancel_btn.setVisible(False)
             self._connecting_api = None
             return
 
-        self._progress.update_stage(0, "ok", "Connected to teamserver")
-        self._progress.update_stage(1, "ok", "Authenticated")
-        self._progress.add_stage("Loading interface...", "ok")
+        self._progress.update_stage(0, "ok", "> LINK ESTABLISHED")
+        self._progress.update_stage(1, "ok", "> HANDSHAKE COMPLETE")
+        self._progress.add_stage("> LOADING BEACON INVENTORY...", "ok")
 
         _updates = {"last_url": url, "last_username": username}
         if self._remember.isChecked():
@@ -326,6 +337,9 @@ class MainWindow(QMainWindow):
         self._status_bar_widgets = []
         self._status_indicator = None
         self._operator_label = None
+        self._quip_timer = None
+        self._quip_label = None
+        self._quip_idx = 0
 
         self.setWindowTitle("Pandragon Operator Console")
 
@@ -350,10 +364,17 @@ class MainWindow(QMainWindow):
 
     # ── Disconnect / Reconnect ─────────────────────────────────────────
 
+    def _cycle_quip(self):
+        self._quip_idx = (self._quip_idx + 1) % len(_STATUS_QUIPS)
+        self._quip_label.setText(_STATUS_QUIPS[self._quip_idx])
+
     def _disconnect(self):
         if self.api:
             self.api.disconnect()
             self.api = None
+
+        if self._quip_timer:
+            self._quip_timer.stop()
 
         for w in self._status_bar_widgets:
             try:
@@ -497,17 +518,17 @@ class MainWindow(QMainWindow):
         sb.addWidget(self._operator_label)
         self._status_bar_widgets.append(self._operator_label)
 
-        # Right side: quote + branding (permanent = right-aligned)
+        # Right side: cycling quip + branding (permanent = right-aligned)
         sep1 = QLabel("  |  ")
         sep1.setStyleSheet("color: #444;")
         sb.addPermanentWidget(sep1)
         self._status_bar_widgets.append(sep1)
 
-        quote = QLabel('\u201cThe bird of Hermes is my Name\u2026\u201d')
-        quote.setFont(_MONO)
-        quote.setStyleSheet("color: #555;")
-        sb.addPermanentWidget(quote)
-        self._status_bar_widgets.append(quote)
+        self._quip_label = QLabel(_STATUS_QUIPS[0])
+        self._quip_label.setFont(_MONO)
+        self._quip_label.setStyleSheet("color: #555;")
+        sb.addPermanentWidget(self._quip_label)
+        self._status_bar_widgets.append(self._quip_label)
 
         sep2 = QLabel("  |  ")
         sep2.setStyleSheet("color: #444;")
@@ -519,6 +540,12 @@ class MainWindow(QMainWindow):
         brand.setStyleSheet("color: #666;")
         sb.addPermanentWidget(brand)
         self._status_bar_widgets.append(brand)
+
+        # Rotating status quips
+        self._quip_timer = QTimer(self)
+        self._quip_timer.timeout.connect(self._cycle_quip)
+        self._quip_timer.start(8000)
+        self._quip_idx = 0
 
     def _on_graph_node_selected(self, beacon_id):
         tabs = self._tabs

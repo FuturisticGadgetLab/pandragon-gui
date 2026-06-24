@@ -9,15 +9,15 @@ Operators can manually link beacons for visualization purposes only.
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsTextItem,
-    QGraphicsEllipseItem, QGraphicsLineItem, QGraphicsPolygonItem, QMenu,
+    QGraphicsLineItem, QGraphicsPolygonItem, QMenu,
     QDialog, QLineEdit, QFormLayout, QDialogButtonBox, QMessageBox,
-    QSpinBox, QComboBox, QFrame, QGroupBox, QGridLayout,
+    QComboBox, QFrame, QGroupBox, QGridLayout,
     QGraphicsObject,
 )
 from typing import Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal, QPointF, QLineF, QRectF
-from PyQt6.QtGui import QFont, QColor, QPen, QBrush, QAction, QPainter, QTransform, QImage
+from PyQt6.QtGui import QFont, QColor, QPen, QBrush, QPainter, QImage
 from PyQt6.QtGui import QPolygonF
 
 from gui.widgets.notification_overlay import NotificationOverlay

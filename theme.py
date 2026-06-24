@@ -6,7 +6,6 @@ Provides runtime theme switching via signal and a combo-box helper.
 """
 
 import os
-from typing import Optional
 
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QComboBox
