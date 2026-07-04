@@ -11,6 +11,7 @@ Run from the project root (/sec/root/pandragon) or anywhere.
 
 import sys
 import os
+import argparse
 
 # Ensure the project root is on sys.path so `gui.*` imports work
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -20,4 +21,8 @@ if PROJECT_ROOT not in sys.path:
 from gui.main import main
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Pandragon GUI Operator Console")
+    parser.add_argument('--accept-responsibility', action='store_true',
+                        help='Acknowledge educational/authorized-use terms and accept liability')
+    args = parser.parse_args()
+    main(accept_responsibility=args.accept_responsibility)

@@ -623,9 +623,34 @@ class MainWindow(QMainWindow):
 
 #  Application Entry 
 
-def main():
+def main(accept_responsibility=False):
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
+
+    if not accept_responsibility:
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Icon.Warning)
+        msg.setWindowTitle("Authorized Use Only")
+        msg.setText(
+            "Pandragon — Authorized Use Only\n\n"
+            "This framework is intended exclusively for:\n"
+            "  \u2022  Authorized penetration testing with written permission\n"
+            "     from the target system owner(s)\n"
+            "  \u2022  Personal security research on systems you own or have\n"
+            "     explicit permission to test\n"
+            "  \u2022  Academic research and cybersecurity education strictly\n"
+            "     within dedicated, isolated laboratory networks\n\n"
+            "Use in production environments, public networks, or live\n"
+            "targets without written authorization is strictly forbidden.\n"
+            "The authors disclaim all liability for misuse.\n\n"
+            "Do no evil."
+        )
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes |
+                               QMessageBox.StandardButton.No)
+        msg.button(QMessageBox.StandardButton.Yes).setText("I Agree")
+        msg.button(QMessageBox.StandardButton.No).setText("I Decline")
+        if msg.exec() != QMessageBox.StandardButton.Yes:
+            sys.exit(0)
 
     palette = QPalette()
     palette.setColor(QPalette.ColorRole.Window, QColor(30, 30, 30))
