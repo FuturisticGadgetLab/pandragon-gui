@@ -30,7 +30,7 @@ class BOFRepositoryWidget(QWidget):
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)
 
-        # ── Toolbar ──────────────────────────────────────────────
+        #  Toolbar 
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
 
@@ -64,7 +64,7 @@ class BOFRepositoryWidget(QWidget):
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
-        # ── BOF table ────────────────────────────────────────────
+        #  BOF table 
         self._table = QTableWidget()
         self._table.setColumnCount(len(_COLUMNS))
         self._table.setHorizontalHeaderLabels(_COLUMNS)
@@ -77,7 +77,7 @@ class BOFRepositoryWidget(QWidget):
         self._table.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self._table, 1)
 
-        # ── Deploy section ───────────────────────────────────────
+        #  Deploy section 
         deploy_group = QGroupBox("Execute on Beacon")
         deploy_layout = QFormLayout(deploy_group)
         deploy_layout.setSpacing(6)
@@ -118,7 +118,7 @@ class BOFRepositoryWidget(QWidget):
         if self._notifications:
             self._notifications.error(f"[{task_id}] {error}", 6000)
 
-    # ── BOF list ─────────────────────────────────────────────────
+    #  BOF list 
 
     def refresh(self):
         try:
@@ -160,7 +160,7 @@ class BOFRepositoryWidget(QWidget):
         self._verify_btn.setVisible(has_selection)
         self._edit_meta_btn.setVisible(has_selection)
 
-    # ── Beacon list for deploy ───────────────────────────────────
+    #  Beacon list for deploy 
 
     def _populate_beacons(self):
         try:
@@ -173,7 +173,7 @@ class BOFRepositoryWidget(QWidget):
             if self._notifications:
                 self._notifications.warning(f"Failed to list beacons: {e}", 3000)
 
-    # ── Upload ───────────────────────────────────────────────────
+    #  Upload 
 
     def _upload_bof(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -201,7 +201,7 @@ class BOFRepositoryWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Upload Failed", str(e))
 
-    # ── Source BOF (editor + file load + build) ──────────────────
+    #  Source BOF (editor + file load + build) 
 
     def _source_bof_dialog(self):
         dialog = QDialog(self)
@@ -333,7 +333,7 @@ class BOFRepositoryWidget(QWidget):
         build_btn.clicked.connect(do_build)
         dialog.exec()
 
-    # ── Delete ───────────────────────────────────────────────────
+    #  Delete 
 
     def _delete_bof(self):
         row = self._table.currentRow()
@@ -355,7 +355,7 @@ class BOFRepositoryWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Delete Failed", str(e))
 
-    # ── Verify ───────────────────────────────────────────────────
+    #  Verify 
 
     def _verify_selected(self):
         row = self._table.currentRow()
@@ -382,7 +382,7 @@ class BOFRepositoryWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Verify Failed", str(e))
 
-    # ── Edit Metadata ────────────────────────────────────────────
+    #  Edit Metadata 
 
     def _edit_metadata(self):
         row = self._table.currentRow()
@@ -427,7 +427,7 @@ class BOFRepositoryWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Update Failed", str(e))
 
-    # ── Execute ──────────────────────────────────────────────────
+    #  Execute 
 
     def _execute_bof(self):
         row = self._table.currentRow()

@@ -41,7 +41,7 @@ class _BaseActionDialog(QDialog):
         self._layout.addRow("", buttons)
 
 
-# ── BOF Exec ────────────────────────────────────────────────────
+#  BOF Exec 
 
 class BOFExecDialog(_BaseActionDialog):
     """Collects BOF file path and arguments."""
@@ -157,7 +157,7 @@ class BOFExecDialog(_BaseActionDialog):
         super().accept()
 
 
-# ── Inject Process ──────────────────────────────────────────────
+#  Inject Process 
 
 class InjectProcessDialog(_BaseActionDialog):
     """Collects target PID and BOF file path for injection."""
@@ -215,7 +215,7 @@ class InjectProcessDialog(_BaseActionDialog):
         super().accept()
 
 
-# ── File Download ───────────────────────────────────────────────
+#  File Download 
 
 class FileDownloadDialog(_BaseActionDialog):
     """Collects remote path and optional local save path."""
@@ -237,7 +237,7 @@ class FileDownloadDialog(_BaseActionDialog):
         return self.local_path_input.text()
 
 
-# ── File Upload ─────────────────────────────────────────────────
+#  File Upload 
 
 class FileUploadDialog(_BaseActionDialog):
     """Collects local file path and remote destination."""
@@ -288,7 +288,7 @@ class FileUploadDialog(_BaseActionDialog):
         super().accept()
 
 
-# ── List Files ──────────────────────────────────────────────────
+#  List Files 
 
 class ListFilesDialog(_BaseActionDialog):
     """Collects remote directory path to list."""
@@ -303,7 +303,7 @@ class ListFilesDialog(_BaseActionDialog):
         return self.dir_path_input.text()
 
 
-# ── Sleep ───────────────────────────────────────────────────────
+#  Sleep 
 
 class SleepDialog(_BaseActionDialog):
     """Collects sleep interval in seconds."""
@@ -320,7 +320,7 @@ class SleepDialog(_BaseActionDialog):
         return self.sleep_spin.value()
 
 
-# ── ETW Toggle ──────────────────────────────────────────────────
+#  ETW Toggle 
 
 class ETWDialog(_BaseActionDialog):
     """Toggle ETW enable/disable selector."""
@@ -336,7 +336,7 @@ class ETWDialog(_BaseActionDialog):
         return self.action_combo.currentText().lower()
 
 
-# ── Exit Beacon ─────────────────────────────────────────────────
+#  Exit Beacon 
 
 class ExitDialog(_BaseActionDialog):
     """Confirmation dialog for exiting a beacon."""
@@ -353,7 +353,7 @@ class ExitDialog(_BaseActionDialog):
         label.setFont(font)
         self._layout.addRow(label)
 
-# ── Execute PE via Donut ────────────────────────────────────────
+#  Execute PE via Donut 
 
 class ExecutePEDialog(_BaseActionDialog):
     """Upload a PE to the server; server converts to shellcode via Donut

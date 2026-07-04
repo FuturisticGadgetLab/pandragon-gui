@@ -22,8 +22,7 @@ from PyQt6.QtGui import QColor, QAction, QKeySequence
 from gui.api_client import PandragonAPI
 from gui.dialogs.action_dialogs import (
     BOFExecDialog, ExecutePEDialog, InjectProcessDialog,
-    FileDownloadDialog, FileUploadDialog, ListFilesDialog,
-    SleepDialog,
+    ListFilesDialog, SleepDialog,
 )
 from gui.widgets.notification_overlay import NotificationOverlay
 
@@ -224,18 +223,16 @@ class _BeaconFilterProxy(QSortFilterProxyModel):
 
 
 # Opcode map for dispatched actions (dialogs handle payload construction)
-ACTION_OPCODES = {
-    "bof":   0x10,
-    "execute_pe": 0x10,
-    "inject":  0x30,
-    "list_files": 0x13,
-    "download":   0x11,
-    "upload":     0x14,
-    "sleep":   0x02,
-    "etw_enable":  0x25,
-    "etw_disable": 0x26,
-    "exit":    0xFF,
-}
+    ACTION_OPCODES = {
+        "bof":   0x10,
+        "execute_pe": 0x10,
+        "inject":  0x30,
+        "list_files": 0x13,
+        "sleep":   0x02,
+        "etw_enable":  0x25,
+        "etw_disable": 0x26,
+        "exit":    0xFF,
+    }
 
 
 class BeaconTableWidget(QWidget):
@@ -252,7 +249,7 @@ class BeaconTableWidget(QWidget):
 
         layout = QVBoxLayout(self)
 
-        # ── Toolbar ──────────────────────────────────────────────────
+        #  Toolbar 
         toolbar = QHBoxLayout()
 
         self.search_input = QLineEdit()
@@ -267,7 +264,7 @@ class BeaconTableWidget(QWidget):
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
-        # ── Table view ───────────────────────────────────────────────
+        #  Table view 
         self._model = _BeaconTableModel(self)
         self._proxy = _BeaconFilterProxy(self)
         self._proxy.setSourceModel(self._model)
@@ -294,18 +291,18 @@ class BeaconTableWidget(QWidget):
 
         layout.addWidget(self.table)
 
-        # ── Keyboard shortcuts ───────────────────────────────────────
+        #  Keyboard shortcuts 
         from PyQt6.QtGui import QShortcut
         QShortcut(QKeySequence("Ctrl+R"), self, self.rotate_key)
         QShortcut(QKeySequence.StandardKey.Delete, self, self.remove_beacon)
         QShortcut(QKeySequence("Escape"), self, self.search_input.clear)
 
-        # ── Auto-refresh ─────────────────────────────────────────────
+        #  Auto-refresh 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh)
         self._timer.start(15000)
 
-    # ── Public API ──────────────────────────────────────────────────
+    #  Public API 
 
     def set_notification_overlay(self, overlay: NotificationOverlay):
         self._notifications = overlay
@@ -348,7 +345,7 @@ class BeaconTableWidget(QWidget):
                 self.table.selectRow(proxy_idx.row())
                 return
 
-    # ── Selection helpers ───────────────────────────────────────────
+    #  Selection helpers 
 
     def _first_selected_source_index(self) -> Optional[int]:
         rows = self._proxy_selected_rows()
@@ -374,7 +371,7 @@ class BeaconTableWidget(QWidget):
     def _on_filter_changed(self, text: str):
         self._proxy.set_filter_text(text)
 
-    # ── Actions ─────────────────────────────────────────────────────
+    #  Actions 
 
     def remove_beacon(self):
         bids = self.get_selected_beacon_ids()
@@ -462,7 +459,7 @@ class BeaconTableWidget(QWidget):
                 )
         self.refresh()
 
-    # ── Context Menu ────────────────────────────────────────────────
+    #  Context Menu 
 
     def _show_context_menu(self, pos):
         beacon_id = self.get_selected_beacon_id()
@@ -474,28 +471,26 @@ class BeaconTableWidget(QWidget):
         menu.exec(self.table.viewport().mapToGlobal(pos))
 
     def _build_context_menu(self, menu: QMenu, beacon_id: str):
-        # ── Execution ───────────────────────────────────────────
+        #  Execution 
         exec_m = menu.addMenu("Execution")
         self._add_action(exec_m, "BOF Exec", "bof", beacon_id)
         self._add_action(exec_m, "Execute PE...", "execute_pe", beacon_id)
 
         menu.addSeparator()
 
-        # ── Inject ──────────────────────────────────────────────
+        #  Inject 
         inject = menu.addMenu("Inject")
         self._add_action(inject, "Inject Process", "inject", beacon_id)
 
         menu.addSeparator()
 
-        # ── File Operations ─────────────────────────────────────
+        #  File Operations 
         file_m = menu.addMenu("File Operations")
         self._add_action(file_m, "List Files",    "list_files", beacon_id)
-        self._add_action(file_m, "Download File", "download",   beacon_id)
-        self._add_action(file_m, "Upload File",   "upload",     beacon_id)
 
         menu.addSeparator()
 
-        # ── Beacon Control ──────────────────────────────────────
+        #  Beacon Control 
         ctrl = menu.addMenu("Beacon Control")
 
         sleep_a = QAction("Sleep\u2026", self)
@@ -543,8 +538,6 @@ class BeaconTableWidget(QWidget):
             "execute_pe": ExecutePEDialog,
             "inject": InjectProcessDialog,
             "list_files": ListFilesDialog,
-            "download": FileDownloadDialog,
-            "upload": FileUploadDialog,
             "sleep": SleepDialog,
         }
         dlg_cls = dlg_map.get(action_key)
@@ -608,7 +601,7 @@ class BeaconTableWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to execute PE: {e}")
 
-    # ── Task building ───────────────────────────────────────────────
+    #  Task building 
 
     _PAYLOAD_BUILDERS = {}
 
@@ -646,20 +639,6 @@ class BeaconTableWidget(QWidget):
         if action == "list_files":
             d = dlg.get_directory_path()
             return base64.b64encode(d.encode()).decode(), f"list: {d}"
-
-        if action == "download":
-            remote = dlg.get_remote_path()
-            local = dlg.get_local_path()
-            desc = f"download: {remote}"
-            if local:
-                desc += f" -> {local}"
-            return base64.b64encode(remote.encode()).decode(), desc
-
-        if action == "upload":
-            local = dlg.get_local_path()
-            remote = dlg.get_remote_path()
-            text = f"{local} {remote}"
-            return base64.b64encode(text.encode()).decode(), f"upload: {local} -> {remote}"
 
         if action == "sleep":
             sec = dlg.get_sleep_seconds()

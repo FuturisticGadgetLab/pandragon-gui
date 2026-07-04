@@ -376,7 +376,7 @@ class _C2ChannelDialog(QDialog):
         tabs = QTabWidget(self)
         main_tab = QWidget()
 
-        # ── Main tab ─────────────────────────────────────────────
+        #  Main tab 
         main_layout = QFormLayout(main_tab)
 
         self._type = QComboBox()
@@ -416,7 +416,7 @@ class _C2ChannelDialog(QDialog):
         self._backoff.setValue(self._channel.get("backoff_sleep_ms", 10000))
         main_layout.addRow("Backoff (ms)", self._backoff)
 
-        # ── Malleable tab ────────────────────────────────────────
+        #  Malleable tab 
         self._malleable_tabs = QTabWidget()
         self._mc_poll = _MalleableForm("poll", "poll_malleable_config", self._channel, is_response=False)
         self._mc_submit = _MalleableForm("submit", "submit_malleable_config", self._channel, is_response=False)
@@ -427,7 +427,7 @@ class _C2ChannelDialog(QDialog):
         self._malleable_tabs.addTab(self._mc_poll_resp, "Poll Response")
         self._malleable_tabs.addTab(self._mc_submit_resp, "Submit Response")
 
-        # ── Assemble ─────────────────────────────────────────────
+        #  Assemble 
         tabs.addTab(main_tab, "General")
         tabs.addTab(self._malleable_tabs, "Malleable")
 
@@ -593,7 +593,7 @@ class _ChainStackDelegate(QStyledItemDelegate):
 
         rect = option.rect.adjusted(4, 1, -4, -1)
 
-        # ── Continuous vertical connector (spans full item rect) ──
+        #  Continuous vertical connector (spans full item rect) 
         line_x = rect.x() + 2
         conn_color = pal.color(QPalette.ColorRole.Mid).darker(120)
         painter.setPen(QPen(conn_color, 1))
@@ -602,7 +602,7 @@ class _ChainStackDelegate(QStyledItemDelegate):
             int(line_x), option.rect.bottom(),
         )
 
-        # ── Card background ──
+        #  Card background 
         if is_locked:
             bg = pal.color(QPalette.ColorRole.AlternateBase)
         elif is_selected:
@@ -614,7 +614,7 @@ class _ChainStackDelegate(QStyledItemDelegate):
         path.addRoundedRect(QRectF(rect), 4, 4)
         painter.fillPath(path, bg)
 
-        # ── Card border ──
+        #  Card border 
         if is_selected and not is_locked:
             painter.setPen(
                 QPen(pal.color(QPalette.ColorRole.Highlight), 1.2)
@@ -623,7 +623,7 @@ class _ChainStackDelegate(QStyledItemDelegate):
             painter.setPen(QPen(conn_color, 1))
         painter.drawRoundedRect(QRectF(rect), 4, 4)
 
-        # ── Accent bar (on top of connector) ──
+        #  Accent bar (on top of connector) 
         accent = QRectF(line_x, rect.y() + 4, 3, rect.height() - 8)
         if is_locked:
             accent_color = pal.color(QPalette.ColorRole.Mid)
@@ -631,7 +631,7 @@ class _ChainStackDelegate(QStyledItemDelegate):
             accent_color = pal.color(QPalette.ColorRole.Highlight)
         painter.fillRect(accent, accent_color)
 
-        # ── Text ──
+        #  Text 
         text_x = rect.x() + 12
         text_w = rect.width() - 22
 
@@ -836,7 +836,7 @@ class ConfigBuilderWidget(QWidget):
         self._tabs.addTab(self._build_build_tab(), "Build")
         layout.addWidget(self._tabs)
 
-    # ── Tab 1: C2 Channels ──────────────────────────────────────────
+    #  Tab 1: C2 Channels 
 
     def _build_channels_tab(self) -> QWidget:
         tab = QWidget()
@@ -926,7 +926,7 @@ class ConfigBuilderWidget(QWidget):
             self._channels_table.item(i, 0).setToolTip(tip)
         self._populate_preview_channels()
 
-    # ── Tab 2: Timing & Obfuscation ─────────────────────────────────
+    #  Tab 2: Timing & Obfuscation 
 
     def _build_timing_tab(self) -> QWidget:
         scroll = QScrollArea()
@@ -1079,7 +1079,7 @@ class ConfigBuilderWidget(QWidget):
         self._pivot_row.setVisible(bool(indirect_sys))
         self._lazy_checkin_max_row.setVisible(bool(lazy_ci))
 
-    # ── Tab 3: Stack Spoof Chain ────────────────────────────────────
+    #  Tab 3: Stack Spoof Chain 
 
     def _build_chain_tab(self) -> QWidget:
         tab = QWidget()
@@ -1297,7 +1297,7 @@ class ConfigBuilderWidget(QWidget):
         bottom_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
         self._chain_stack.addItem(bottom_item)
 
-    # ── Tab 4: Malleable C2 ─────────────────────────────────────────
+    #  Tab 4: Malleable C2 
 
     _DIRECTION_KEYS = [
         ("Poll", "poll_malleable_config", False),
@@ -1599,7 +1599,7 @@ class ConfigBuilderWidget(QWidget):
             self._resp_headers_table.setItem(i, 0, QTableWidgetItem(k))
             self._resp_headers_table.setItem(i, 1, QTableWidgetItem(v))
 
-    # ── Tab 5: Work Hours & Spawn-to ────────────────────────────────
+    #  Tab 5: Work Hours & Spawn-to 
 
     def _build_workhours_tab(self) -> QWidget:
         scroll = QScrollArea()
@@ -1644,7 +1644,7 @@ class ConfigBuilderWidget(QWidget):
         scroll.setWidget(container)
         return scroll
 
-    # ── Tab: Post-Build ───────────────────────────────────────────────
+    #  Tab: Post-Build 
 
     def _build_postbuild_tab(self) -> QWidget:
         tab = QWidget()
@@ -1738,7 +1738,7 @@ class ConfigBuilderWidget(QWidget):
     def _sync_inmem_append_list(self):
         self._config["in_memory_append"] = {"append": [self._inmem_append_list.item(i).text() for i in range(self._inmem_append_list.count())]}
 
-    # ── Tab: Request Preview ─────────────────────────────────────────────
+    #  Tab: Request Preview 
 
     def _build_preview_tab(self) -> QWidget:
         tab = QWidget()
@@ -1937,7 +1937,7 @@ class ConfigBuilderWidget(QWidget):
 
         self._preview_text.setHtml(html)
 
-    # ── Tab 6: Build ────────────────────────────────────────────────
+    #  Tab 6: Build 
 
     def _build_build_tab(self) -> QWidget:
         tab = QWidget()
@@ -2088,7 +2088,7 @@ class ConfigBuilderWidget(QWidget):
         cursor.movePosition(cursor.MoveOperation.End)
         self._build_output_text.setTextCursor(cursor)
 
-    # ── Config I/O ──────────────────────────────────────────────────
+    #  Config I/O 
 
     def _sync_form_to_config(self):
         """Pull current widget values into self._config dict using schema field map."""

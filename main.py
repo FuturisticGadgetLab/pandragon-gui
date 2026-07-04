@@ -362,7 +362,7 @@ class MainWindow(QMainWindow):
 
         self.resize(640, 420)
 
-    # ── Disconnect / Reconnect ─────────────────────────────────────────
+    #  Disconnect / Reconnect 
 
     def _cycle_quip(self):
         self._quip_idx = (self._quip_idx + 1) % len(_STATUS_QUIPS)
@@ -398,7 +398,7 @@ class MainWindow(QMainWindow):
         self.resize(480, 400)
         self.setWindowTitle("Pandragon Operator Console")
 
-    # ── Splash / transitions ──────────────────────────────────────────
+    #  Splash / transitions 
 
     def _on_splash_done(self):
         if self._splash_done:
@@ -621,7 +621,7 @@ class MainWindow(QMainWindow):
             self.beacon_detail.update_beacon(None)
 
 
-# ── Application Entry ──────────────────────────────────────────
+#  Application Entry 
 
 def main():
     app = QApplication(sys.argv)

@@ -72,7 +72,7 @@ class BeaconDetailWidget(QWidget):
         # Main vertical splitter: info (top) + output (bottom)
         main_splitter = QSplitter(Qt.Orientation.Vertical)
 
-        # ── Top: Scrollable info panel ────────────────────────
+        #  Top: Scrollable info panel 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -184,7 +184,7 @@ class BeaconDetailWidget(QWidget):
         scroll.setWidget(container)
         main_splitter.addWidget(scroll)
 
-        # ── Bottom: Output viewer ──────────────────────────────
+        #  Bottom: Output viewer 
         output_container = QWidget()
         output_layout = QVBoxLayout(output_container)
         output_layout.setContentsMargins(0, 0, 0, 0)
@@ -252,7 +252,7 @@ class BeaconDetailWidget(QWidget):
 
         self._clear_fields()
 
-    # ── Public API ──────────────────────────────────────────────
+    #  Public API 
 
     def set_notification_overlay(self, overlay: NotificationOverlay):
         self._notifications = overlay
@@ -440,7 +440,7 @@ class BeaconDetailWidget(QWidget):
         if self._auto_scroll:
             self._scroll_to_end()
 
-    # ── Output helpers ──────────────────────────────────────────
+    #  Output helpers 
 
     def _append_output(self, text: str, is_error: bool = False,
                        timestamp_color: str = None):
@@ -495,7 +495,7 @@ class BeaconDetailWidget(QWidget):
         self.output_text.setExtraSelections(selections)
         self.output_match_label.setText(f"{matches} match{'es' if matches != 1 else ''}")
 
-    # ── Internal helpers ────────────────────────────────────────
+    #  Internal helpers 
 
     @staticmethod
     def _make_group(title: str) -> QGroupBox:

@@ -65,7 +65,7 @@ class PandragonAPI(QObject):
         self._pending: Dict[int, dict] = {}
         self._lock = threading.Lock()
 
-    # ── Connection ───────────────────────────────────────────────
+    #  Connection 
 
     def connect(self, token: str, username: str = "operator", ssl_verify: bool = True) -> bool:
         if self._running:
@@ -131,7 +131,7 @@ class PandragonAPI(QObject):
     def is_connected(self) -> bool:
         return self._authenticated and self._running
 
-    # ── Reconnection ─────────────────────────────────────────────
+    #  Reconnection 
 
     def _start_reconnect(self):
         if not self._running:
@@ -149,7 +149,7 @@ class PandragonAPI(QObject):
         if not success:
             self._start_reconnect()
 
-    # ── Request helpers ──────────────────────────────────────────
+    #  Request helpers 
 
     def _send_request(self, msg: dict) -> dict:
         with self._lock:
@@ -185,7 +185,7 @@ class PandragonAPI(QObject):
             raise RuntimeError(result.get('error', 'Unknown error'))
         return result
 
-    # ── WebSocket callbacks ──────────────────────────────────────
+    #  WebSocket callbacks 
 
     def _on_open(self, ws):
         ws.send(json.dumps({
@@ -271,7 +271,7 @@ class PandragonAPI(QObject):
         if self._running:
             self._start_reconnect()
 
-    # ── Public API methods ───────────────────────────────────────
+    #  Public API methods 
 
     def list_beacons(self) -> list:
         result = self._send_request({'type': 'list_beacons'})

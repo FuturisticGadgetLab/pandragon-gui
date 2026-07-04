@@ -36,7 +36,7 @@ class ThemeManager(QObject):
         self._current = last
         self.apply(self._current)
 
-    # ── Public API ─────────────────────────────────────────────────
+    #  Public API 
 
     @property
     def current(self) -> str:
@@ -67,7 +67,7 @@ class ThemeManager(QObject):
         self.theme_changed.emit(name)
         return True
 
-    # ── Theme switcher widget ──────────────────────────────────────
+    #  Theme switcher widget 
 
     def make_switcher(self) -> QComboBox:
         """Create a QComboBox populated with available themes."""
@@ -80,7 +80,7 @@ class ThemeManager(QObject):
         )
         return cb
 
-    # ── Internal ───────────────────────────────────────────────────
+    #  Internal 
 
     def _discover_themes(self):
         if not os.path.isdir(self._themes_dir):

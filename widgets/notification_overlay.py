@@ -148,7 +148,7 @@ class NotificationOverlay(QWidget):
         # We re-layout whenever the parent is resized
         parent.installEventFilter(self)
 
-    # ── Public API ─────────────────────────────────────────────────
+    #  Public API 
 
     def info(self, message: str, timeout_ms: int = 4000):
         self._add(message, "info", timeout_ms)
@@ -163,7 +163,7 @@ class NotificationOverlay(QWidget):
         """Errors persist until dismissed by default (timeout=0)."""
         self._add(message, "error", timeout_ms)
 
-    # ── Internal ──────────────────────────────────────────────────
+    #  Internal 
 
     def _add(self, message: str, style: str, timeout_ms: int):
         n = _Notification(message, style, timeout_ms, self)

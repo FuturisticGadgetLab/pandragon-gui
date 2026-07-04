@@ -56,8 +56,8 @@ class TaskQueueWidget(QWidget):
 
     OPCODE_NAMES = {
         0x00: "NO_TASKS", 0x01: "ECHO", 0x02: "SLEEP",
-        0x10: "BOF_EXEC", 0x11: "FILE_DOWNLOAD",
-        0x12: "FILE_UPLOAD", 0x13: "LIST_FILES", 0x1E: "ROTATE_KEY",
+        0x10: "BOF_EXEC", 0x11: "BOF_FREE",
+        0x13: "LIST_FILES", 0x1E: "ROTATE_KEY",
         0x20: "FILE_DOWNLOAD_START", 0x21: "FILE_DOWNLOAD_CHUNK",
         0x22: "FILE_UPLOAD_START", 0x23: "FILE_UPLOAD_CHUNK",
         0x25: "ETW_ENABLE", 0x26: "ETW_DISABLE",
@@ -119,7 +119,7 @@ class TaskQueueWidget(QWidget):
     def set_notification_overlay(self, overlay: NotificationOverlay):
         self._notifications = overlay
 
-    # ── Public API ──────────────────────────────────────────────
+    #  Public API 
 
     def add_task(self, beacon_id: str, opcode: int, payload: str,
                  priority: str = "normal", description: str = "",
@@ -207,7 +207,7 @@ class TaskQueueWidget(QWidget):
         if beacon_id in self._queue:
             self.flush_beacon(beacon_id)
 
-    # ── Internal ────────────────────────────────────────────────
+    #  Internal 
 
     def _on_item_double_clicked(self, item: QTreeWidgetItem, column: int):
         """Double-click a task to edit its description inline."""
