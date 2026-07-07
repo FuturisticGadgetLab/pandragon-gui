@@ -8,6 +8,7 @@ button that invokes the config builder toolchain.
 
 import json
 import os
+import secrets
 import sys
 import tempfile
 from typing import Optional
@@ -498,7 +499,7 @@ class _BuildWorker(QObject):
 
                 try:
                     from pandragon_config_builder import (
-                        validate_config, build_config_blob,
+                        validate_config, build_config_blob, derive_beacon_id,
                         generate_cpp_header, sync_beacon_to_server,
                     )
                 except ImportError:
@@ -506,12 +507,17 @@ class _BuildWorker(QObject):
                     if _tools_src not in sys.path:
                         sys.path.insert(0, _tools_src)
                     from pandragon_config_builder import (
-                        validate_config, build_config_blob,
+                        validate_config, build_config_blob, derive_beacon_id,
                         generate_cpp_header, sync_beacon_to_server,
                     )
 
                 if self._cancelled:
                     return
+
+                if 'crypto_key' not in self._config:
+                    self._config['crypto_key'] = secrets.token_hex(32)
+                if 'beacon_id' not in self._config:
+                    self._config['beacon_id'] = derive_beacon_id(self._config['crypto_key'])
 
                 errors = validate_config(self._config)
                 if errors:
