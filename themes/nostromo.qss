@@ -38,7 +38,7 @@ QTabBar::tab:hover:!selected {
     color: #d4902a;
 }
 
-QTableWidget, QTreeWidget {
+QTableWidget, QTreeWidget, QTableView, QListWidget {
     background-color: #000000;
     color: #d4c8a0;
     gridline-color: #1a1a0a;
@@ -48,20 +48,20 @@ QTableWidget, QTreeWidget {
     outline: none;
 }
 
-QTableWidget::item, QTreeWidget::item {
+QTableWidget::item, QTreeWidget::item, QTableView::item, QListWidget::item {
     padding: 4px 6px;
 }
 
-QTableWidget::item:selected, QTreeWidget::item:selected {
+QTableWidget::item:selected, QTreeWidget::item:selected, QTableView::item:selected, QListWidget::item:selected {
     background-color: #1a1200;
     color: #ffb347;
 }
 
-QTableWidget::item:hover, QTreeWidget::item:hover {
+QTableWidget::item:hover, QTreeWidget::item:hover, QTableView::item:hover, QListWidget::item:hover {
     background-color: #0a0800;
 }
 
-QTableWidget::item:alternate {
+QTableWidget::item:alternate, QTableView::item:alternate, QListWidget::item:alternate {
     background-color: #050500;
 }
 

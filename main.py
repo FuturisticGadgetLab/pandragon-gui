@@ -38,82 +38,16 @@ _MONO_BOLD.setStyleHint(QFont.StyleHint.Monospace)
 _MONO_TITLE = QFont("Consolas", 18, QFont.Weight.Bold)
 _MONO_TITLE.setStyleHint(QFont.StyleHint.Monospace)
 
-_INPUT_STYLE = (
-    "QLineEdit {"
-    "  background-color: #252525;"
-    "  border: 1px solid #444;"
-    "  color: #e0e0e0;"
-    "  padding: 6px 8px;"
-    "}"
-    "QLineEdit:focus { border: 1px solid #888; }"
-)
-_BTN_STYLE = (
-    "QPushButton {"
-    "  background-color: #2a2a2a;"
-    "  border: 1px solid #555;"
-    "  color: #e0e0e0;"
-    "  padding: 6px 12px;"
-    "}"
-    "QPushButton:hover { border: 1px solid #888; }"
-    "QPushButton:disabled { color: #555; border: 1px solid #333; }"
-)
-_CHECK_STYLE = (
-    "QCheckBox { color: #aaa; spacing: 6px; }"
-    "QCheckBox::indicator {"
-    "  width: 14px; height: 14px;"
-    "  background-color: #252525;"
-    "  border: 1px solid #444;"
-    "}"
-    "QCheckBox::indicator:checked { background-color: #555; }"
-)
-_TOKEN_BTN_STYLE = (
-    "QPushButton#tokenToggle {"
-    "  background-color: #252525;"
-    "  border: 1px solid #444;"
-    "  border-left: none;"
-    "  color: #888;"
-    "  padding: 6px 6px;"
-    "  min-width: 40px;"
-    "  max-width: 48px;"
-    "  font-size: 9px;"
-    "  font-weight: bold;"
-    "}"
-    "QPushButton#tokenToggle:hover { color: #ccc; border: 1px solid #888; border-left: none; }"
-    "QPushButton#tokenToggle:checked { color: #e0e0e0; }"
-)
-_CONNECT_BTN_STYLE = (
-    "QPushButton#connectBtn {"
-    "  background-color: #1a1a1a;"
-    "  border: 1px solid #333;"
-    "  color: #e0e0e0;"
-    "  padding: 8px 16px;"
-    "  font-weight: bold;"
-    "}"
-    "QPushButton#connectBtn:hover { border: 1px solid #666; background-color: #222; }"
-    "QPushButton#connectBtn:disabled { color: #555; border: 1px solid #2a2a2a; background: #1a1a1a; }"
-)
-_CANCEL_BTN_STYLE = (
-    "QPushButton#cancelBtn {"
-    "  background-color: #1a1a1a;"
-    "  border: 1px solid #444;"
-    "  color: #aaa;"
-    "  padding: 8px 16px;"
-    "}"
-    "QPushButton#cancelBtn:hover { border: 1px solid #888; color: #e0e0e0; }"
-)
-_PROGRESS_STYLE = (
-    "QWidget#SplashScreen { background: transparent; }"
-)
 
 _STATUS_QUIPS = [
-    "beacon watch -- all quiet",
-    "PANDRAGON OS // FGL // LINK ACTIVE",
+    "the eyes chico, they never lie",
     "\u201cthe bird of Hermes is my Name\u201d",
-    "FGL terminal :: session active",
-    "watching the web \u2026",
-    "PANDRAGON v2.1 // SEVASTOPOL LINK",
-    "\u2014 operator, the beacons are lit \u2014",
-    "all quiet on the western front",
+    "nothing ever happens",
+    "all quiet on the happening front",
+    "there are more things in heaven and earth, Horatio\u2026",
+    "in the beginning was the Word, and the Word was with God",
+    "from the place of the skull, a garden",
+    "skibidi dop dop yes yes"
 ]
 
 
@@ -125,8 +59,6 @@ class ConnectPanel(QWidget):
         self._on_connected = on_connected
         self._connecting_api = None
         saved = load_state()
-
-        self.setStyleSheet("background-color: #1e1e1e;")
 
         outer = QVBoxLayout(self)
         outer.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -141,14 +73,12 @@ class ConnectPanel(QWidget):
         title = QLabel("PANDRAGON")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setFont(_MONO_TITLE)
-        title.setStyleSheet("color: #e0e0e0; background: transparent; border: none;")
         title.setFixedWidth(form_w)
         form.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         subtitle = QLabel("serexp . FGL")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setFont(_MONO)
-        subtitle.setStyleSheet("color: #666; background: transparent; border: none;")
         subtitle.setFixedWidth(form_w)
         form.addWidget(subtitle, alignment=Qt.AlignmentFlag.AlignHCenter)
 
@@ -157,7 +87,6 @@ class ConnectPanel(QWidget):
         self._url = QLineEdit(saved.get("last_url", "wss://127.0.0.1:6767/ws"))
         self._url.setPlaceholderText("WebSocket URL")
         self._url.setFont(_MONO)
-        self._url.setStyleSheet(_INPUT_STYLE)
         self._url.setFixedWidth(form_w)
         self._url.returnPressed.connect(self._do_connect)
         form.addWidget(self._url, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -165,7 +94,6 @@ class ConnectPanel(QWidget):
         self._username = QLineEdit(saved.get("last_username", "operator"))
         self._username.setPlaceholderText("Username")
         self._username.setFont(_MONO)
-        self._username.setStyleSheet(_INPUT_STYLE)
         self._username.setFixedWidth(form_w)
         self._username.returnPressed.connect(self._do_connect)
         form.addWidget(self._username, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -175,7 +103,6 @@ class ConnectPanel(QWidget):
         self._token = QLineEdit(saved.get("last_token", ""))
         self._token.setPlaceholderText("Token (required)")
         self._token.setFont(_MONO)
-        self._token.setStyleSheet(_INPUT_STYLE + "QLineEdit { border-right: none; }")
         self._token.setFixedWidth(form_w - 56)
         self._token.returnPressed.connect(self._do_connect)
         token_row.addWidget(self._token)
@@ -183,7 +110,7 @@ class ConnectPanel(QWidget):
         self._token_toggle = QPushButton("SHOW")
         self._token_toggle.setObjectName("tokenToggle")
         self._token_toggle.setFont(_MONO_BOLD)
-        self._token_toggle.setStyleSheet(_TOKEN_BTN_STYLE)
+        self._token_toggle.setFixedWidth(44)
         self._token_toggle.setFixedHeight(self._token.sizeHint().height() + 4)
         self._token_toggle.setCheckable(True)
         self._token_toggle.clicked.connect(self._toggle_token_visibility)
@@ -197,14 +124,12 @@ class ConnectPanel(QWidget):
         chk_row = QHBoxLayout()
         self._skip_verify = QCheckBox("Skip SSL verify")
         self._skip_verify.setFont(_MONO)
-        self._skip_verify.setStyleSheet(_CHECK_STYLE)
         chk_row.addWidget(self._skip_verify)
 
         chk_row.addStretch()
 
         self._remember = QCheckBox("Remember")
         self._remember.setFont(_MONO)
-        self._remember.setStyleSheet(_CHECK_STYLE)
         self._remember.setChecked(bool(saved.get("last_token", "")))
         chk_row.addWidget(self._remember)
 
@@ -220,7 +145,6 @@ class ConnectPanel(QWidget):
         self._connect_btn = QPushButton("CONNECT")
         self._connect_btn.setObjectName("connectBtn")
         self._connect_btn.setFont(_MONO_BOLD)
-        self._connect_btn.setStyleSheet(_CONNECT_BTN_STYLE)
         self._connect_btn.setMinimumHeight(36)
         self._connect_btn.clicked.connect(self._do_connect)
         btn_row.addWidget(self._connect_btn)
@@ -228,7 +152,6 @@ class ConnectPanel(QWidget):
         self._cancel_btn = QPushButton("CANCEL")
         self._cancel_btn.setObjectName("cancelBtn")
         self._cancel_btn.setFont(_MONO_BOLD)
-        self._cancel_btn.setStyleSheet(_CANCEL_BTN_STYLE)
         self._cancel_btn.setMinimumHeight(36)
         self._cancel_btn.clicked.connect(self._cancel_connect)
         self._cancel_btn.setVisible(False)
@@ -265,7 +188,7 @@ class ConnectPanel(QWidget):
         self._connect_btn.setText("CONNECT")
         self._connect_btn.setEnabled(True)
         self._progress.clear_stages()
-        self._progress.add_stage("> CONNECTION TERMINATED", "info")
+        self._progress.add_stage('\u201cThis is the way the world ends\u201d', "info")
 
     def _do_connect(self):
         url = self._url.text().strip()
@@ -279,8 +202,8 @@ class ConnectPanel(QWidget):
             return
 
         self._progress.clear_stages()
-        self._progress.add_stage("> INITIALIZING PANDRAGON LINK...", "busy")
-        self._progress.add_stage("> AUTHENTICATING OPERATOR...", "busy")
+        self._progress.add_stage('\u201cWhen the Lamb of God spoke, there was Silence in Heaven for about half an hour\u201d', "busy")
+        self._progress.add_stage('\u201cAnd the light shineth in darkness; and the darkness comprehended it not\u201d', "busy")
 
         self._connect_btn.setText("CONNECTING...")
         self._connect_btn.setEnabled(False)
@@ -301,16 +224,16 @@ class ConnectPanel(QWidget):
             msg = auth_error[0] or "Failed to authenticate"
             self._progress.clear_stages()
             self._progress.add_stage(msg, "fail")
-            self._progress.add_stage("> CHECK CONNECTION DETAILS", "info")
+            self._progress.add_stage("> Check connection details", "info")
             self._connect_btn.setText("CONNECT")
             self._connect_btn.setEnabled(True)
             self._cancel_btn.setVisible(False)
             self._connecting_api = None
             return
 
-        self._progress.update_stage(0, "ok", "> LINK ESTABLISHED")
-        self._progress.update_stage(1, "ok", "> HANDSHAKE COMPLETE")
-        self._progress.add_stage("> LOADING BEACON INVENTORY...", "ok")
+        self._progress.update_stage(0, "ok", '\u201cI am become Death, the destroyer of worlds\u201d')
+        self._progress.update_stage(1, "ok", '\u201cThe fault, dear Brutus, is not in our stars, but in ourselves\u201d')
+        self._progress.add_stage('\u201cZzzzzzzzzzzzz...\u201d', "ok")
 
         _updates = {"last_url": url, "last_username": username}
         if self._remember.isChecked():

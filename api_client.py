@@ -29,7 +29,7 @@ class PandragonAPI(QObject):
     _AUTH_TIMEOUT = 10.0
     _MAX_RECONNECT_DELAY = 60.0
     _HEARTBEAT_INTERVAL = 15.0
-    _HEARTBEAT_TIMEOUT = 30.0
+    _HEARTBEAT_TIMEOUT = 120.0
 
     # --- Real-time event signals ---
     beacon_output = pyqtSignal(str, dict)
@@ -40,6 +40,7 @@ class PandragonAPI(QObject):
     beacon_removed = pyqtSignal(str)
     operator_joined = pyqtSignal(str)
     operator_left = pyqtSignal(str)
+    build_progress = pyqtSignal(str)
     list_files_result = pyqtSignal(str, dict)
 
     # --- Connection state signals ---
@@ -98,7 +99,6 @@ class PandragonAPI(QObject):
         self._thread = threading.Thread(
             target=lambda: self._ws.run_forever(
                 sslopt=sslopt, ping_interval=self._HEARTBEAT_INTERVAL,
-                ping_timeout=10,
             ), daemon=True
         )
         self._thread.start()
@@ -151,7 +151,7 @@ class PandragonAPI(QObject):
 
     #  Request helpers 
 
-    def _send_request(self, msg: dict) -> dict:
+    def _send_request(self, msg: dict, timeout: float = None) -> dict:
         with self._lock:
             req_id = self._next_req_id
             self._next_req_id += 1
@@ -169,7 +169,9 @@ class PandragonAPI(QObject):
                 self._pending.pop(req_id, None)
             raise ConnectionError(f"Send failed: {e}")
 
-        if not evt.wait(timeout=self._REQ_TIMEOUT):
+        if timeout is None:
+            timeout = self._REQ_TIMEOUT
+        if not evt.wait(timeout=timeout):
             with self._lock:
                 self._pending.pop(req_id, None)
             raise TimeoutError(f"Request timeout: {msg.get('type')}")
@@ -179,8 +181,8 @@ class PandragonAPI(QObject):
             result = pending.get('result', {})
         return result
 
-    def _send_and_check(self, msg: dict) -> dict:
-        result = self._send_request(msg)
+    def _send_and_check(self, msg: dict, timeout: float = None) -> dict:
+        result = self._send_request(msg, timeout=timeout)
         if not result.get('success', True):
             raise RuntimeError(result.get('error', 'Unknown error'))
         return result
@@ -246,6 +248,9 @@ class PandragonAPI(QObject):
         elif msg_type == 'command_issued':
             beacon_id = data.get('beacon_id', '')
             self.command_issued.emit(beacon_id, data)
+
+        elif msg_type == 'build_progress':
+            self.build_progress.emit(data.get('line', ''))
 
         elif msg_type == 'command_result':
             beacon_id = data.get('beacon_id', '')
@@ -404,6 +409,12 @@ class PandragonAPI(QObject):
             'arch': arch,
             'bypass': bypass,
         })
+
+    def build_config(self, config: dict) -> dict:
+        return self._send_and_check({
+            'type': 'build_config',
+            'config': config,
+        }, timeout=300.0)
 
     def register_beacon(self, beacon_id: str, crypto_key: str, allowed_routes: list) -> dict:
         return self._send_and_check({
