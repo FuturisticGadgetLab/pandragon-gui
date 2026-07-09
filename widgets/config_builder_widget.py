@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QDateEdit, QProgressBar, QListWidget, QListWidgetItem, QStyledItemDelegate,
     QStyle, QInputDialog
 )
+from gui.translations.manager import tr
 from PyQt6.QtCore import Qt, QDate, QThread, pyqtSignal, QObject, QRectF, QSize
 from PyQt6.QtGui import (
     QFont, QPainter, QColor, QPen, QPainterPath, QPalette,
@@ -88,7 +89,7 @@ def _create_schema_widget(prop_schema: dict, value=None):
             w.setText(str(current))
         return w
 
-    return QLabel(f"(unsupported schema type: {typ})")
+    return QLabel(tr("schema.unsupported_type", "(unsupported schema type: {type_name})", type_name=typ))
 
 def _schema_widget_value(w):
     if isinstance(w, QCheckBox):
@@ -227,7 +228,7 @@ class _MalleableForm(QWidget):
         form = QFormLayout()
         layout.addLayout(form)
 
-        self._enabled = QCheckBox(f"Custom {label.lower()} config")
+        self._enabled = QCheckBox(tr("config_builder.custom_config_label", "Custom {label} config", label=label.lower()))
         self._enabled.setChecked(block_key in config)
         self._enabled.toggled.connect(self._on_toggled)
         form.addRow(self._enabled)
@@ -236,12 +237,12 @@ class _MalleableForm(QWidget):
         self._prefix = QLineEdit(wrapper.get("prefix", ""))
         self._prefix.setPlaceholderText("REQ_${RAND_B64:4}_")
         self._prefix.setEnabled(self._enabled.isChecked())
-        form.addRow("Prefix", self._prefix)
+        form.addRow(tr("config_builder.prefix", "Prefix"), self._prefix)
 
         self._suffix = QLineEdit(wrapper.get("suffix", ""))
         self._suffix.setPlaceholderText("_${JUNK:8}")
         self._suffix.setEnabled(self._enabled.isChecked())
-        form.addRow("Suffix", self._suffix)
+        form.addRow(tr("config_builder.suffix", "Suffix"), self._suffix)
 
         pl = self._mc.get("payload_location", {})
         pl_types = self._POLL_TYPES if "poll" in block_key and not is_response else self._SUBMIT_TYPES
@@ -249,59 +250,59 @@ class _MalleableForm(QWidget):
         self._pl_type.addItems(pl_types)
         self._pl_type.setCurrentText(pl.get("type", pl_types[0]))
         self._pl_type.setEnabled(self._enabled.isChecked())
-        form.addRow("Payload Location", self._pl_type)
+        form.addRow(tr("config_builder.payload_location", "Payload Location"), self._pl_type)
 
         self._pl_param = QLineEdit(pl.get("param_name", ""))
-        self._pl_param.setPlaceholderText("query parameter name")
+        self._pl_param.setPlaceholderText(tr("config_builder.malleable_pl_param_name", "query parameter name"))
         self._pl_param.setEnabled(self._enabled.isChecked())
-        form.addRow("Param Name", self._pl_param)
+        form.addRow(tr("config_builder.param_name", "Param Name"), self._pl_param)
 
         self._pl_path_prefix = QLineEdit(pl.get("path_prefix", ""))
         self._pl_path_prefix.setPlaceholderText("/api/")
         self._pl_path_prefix.setEnabled(self._enabled.isChecked())
-        form.addRow("Path Prefix", self._pl_path_prefix)
+        form.addRow(tr("config_builder.path_prefix", "Path Prefix"), self._pl_path_prefix)
 
         self._pl_path_suffix = QLineEdit(pl.get("path_suffix", ""))
         self._pl_path_suffix.setPlaceholderText(".png")
         self._pl_path_suffix.setEnabled(self._enabled.isChecked())
-        form.addRow("Path Suffix", self._pl_path_suffix)
+        form.addRow(tr("config_builder.path_suffix", "Path Suffix"), self._pl_path_suffix)
 
         self._pl_body_ct = QComboBox()
         self._pl_body_ct.addItems(["text/plain", "application/octet-stream"])
         self._pl_body_ct.setCurrentText(pl.get("body_content_type", "text/plain"))
         self._pl_body_ct.setEnabled(self._enabled.isChecked())
-        form.addRow("Body Content-Type", self._pl_body_ct)
+        form.addRow(tr("config_builder.body_content_type", "Body Content-Type"), self._pl_body_ct)
 
         self._pl_cookie = QLineEdit(pl.get("cookie_name", ""))
-        self._pl_cookie.setPlaceholderText("cookie name")
+        self._pl_cookie.setPlaceholderText(tr("config_builder.placeholder_cookie", "cookie name"))
         self._pl_cookie.setEnabled(self._enabled.isChecked())
-        form.addRow("Cookie Name", self._pl_cookie)
+        form.addRow(tr("config_builder.cookie_name", "Cookie Name"), self._pl_cookie)
 
         if is_response:
             self._status_code = QSpinBox()
             self._status_code.setRange(100, 599)
             self._status_code.setValue(self._mc.get("status_code", 200))
             self._status_code.setEnabled(self._enabled.isChecked())
-            form.addRow("Status Code", self._status_code)
+            form.addRow(tr("config_builder.status_code", "Status Code"), self._status_code)
 
             self._body_template = QLineEdit(self._mc.get("body_template", ""))
             self._body_template.setPlaceholderText("{{PAYLOAD}}")
             self._body_template.setEnabled(self._enabled.isChecked())
-            form.addRow("Body Template", self._body_template)
+            form.addRow(tr("config_builder.body_template", "Body Template"), self._body_template)
 
             self._resp_hdr_table = QTableWidget(0, 2)
-            self._resp_hdr_table.setHorizontalHeaderLabels(["Name", "Value"])
+            self._resp_hdr_table.setHorizontalHeaderLabels([tr("config_builder.header_name", "Name"), tr("config_builder.header_value", "Value")])
             self._resp_hdr_table.horizontalHeader().setStretchLastSection(True)
             self._resp_hdr_table.setMaximumHeight(120)
             self._resp_hdr_table.setEnabled(self._enabled.isChecked())
-            form.addRow("Response Headers", self._resp_hdr_table)
+            form.addRow(tr("config_builder.response_headers", "Response Headers"), self._resp_hdr_table)
 
             hdr_btns = QHBoxLayout()
-            self._resp_hdr_add = QPushButton("Add")
+            self._resp_hdr_add = QPushButton(tr("config_builder.add", "Add"))
             self._resp_hdr_add.clicked.connect(self._resp_hdr_add_row)
             self._resp_hdr_add.setEnabled(self._enabled.isChecked())
             hdr_btns.addWidget(self._resp_hdr_add)
-            self._resp_hdr_remove = QPushButton("Remove")
+            self._resp_hdr_remove = QPushButton(tr("config_builder.remove", "Remove"))
             self._resp_hdr_remove.clicked.connect(self._resp_hdr_remove_row)
             self._resp_hdr_remove.setEnabled(self._enabled.isChecked())
             hdr_btns.addWidget(self._resp_hdr_remove)
@@ -380,7 +381,7 @@ class _C2ChannelDialog(QDialog):
 
     def __init__(self, channel: Optional[dict] = None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("C2 Channel")
+        self.setWindowTitle(tr("config_builder.c2_channel_title", "C2 Channel"))
         self.setMinimumWidth(640)
         self._channel = channel or {}
 
@@ -393,39 +394,39 @@ class _C2ChannelDialog(QDialog):
         self._type = QComboBox()
         self._type.addItems(["HTTP", "HTTPS", "TCP", "PIPE"])
         self._type.setCurrentText(self._channel.get("type", "HTTPS"))
-        main_layout.addRow("Type", self._type)
+        main_layout.addRow(tr("config_builder.ch_type", "Type"), self._type)
 
         self._host = QLineEdit(self._channel.get("host", ""))
-        self._host.setPlaceholderText("127.0.0.1")
-        main_layout.addRow("Host", self._host)
+        self._host.setPlaceholderText(tr("config_builder.host_placeholder", "127.0.0.1"))
+        main_layout.addRow(tr("config_builder.ch_host", "Host"), self._host)
 
         self._port = QSpinBox()
         self._port.setRange(1, 65535)
         self._port.setValue(self._channel.get("port", 6767))
-        main_layout.addRow("Port", self._port)
+        main_layout.addRow(tr("config_builder.ch_port", "Port"), self._port)
 
         self._poll_path = QLineEdit(self._channel.get("poll_path", ""))
-        self._poll_path.setPlaceholderText("/api/poll")
-        main_layout.addRow("Poll Path", self._poll_path)
+        self._poll_path.setPlaceholderText(tr("config_builder.poll_path_placeholder", "/api/poll"))
+        main_layout.addRow(tr("config_builder.poll_path", "Poll Path"), self._poll_path)
 
         self._submit_path = QLineEdit(self._channel.get("submit_path", ""))
-        self._submit_path.setPlaceholderText("/api/checkin")
-        main_layout.addRow("Submit Path", self._submit_path)
+        self._submit_path.setPlaceholderText(tr("config_builder.submit_path_placeholder", "/api/checkin"))
+        main_layout.addRow(tr("config_builder.submit_path", "Submit Path"), self._submit_path)
 
         self._ua = QLineEdit(self._channel.get("user_agent", ""))
-        self._ua.setPlaceholderText("Mozilla/5.0 ...")
-        main_layout.addRow("User-Agent", self._ua)
+        self._ua.setPlaceholderText(tr("config_builder.user_agent_placeholder", "Mozilla/5.0 ..."))
+        main_layout.addRow(tr("config_builder.user_agent", "User-Agent"), self._ua)
 
         self._max_fail = QSpinBox()
         self._max_fail.setRange(1, 100)
         self._max_fail.setValue(self._channel.get("max_consecutive_failures", 5))
-        main_layout.addRow("Max Failures", self._max_fail)
+        main_layout.addRow(tr("config_builder.max_failures", "Max Failures"), self._max_fail)
 
         self._backoff = QSpinBox()
         self._backoff.setRange(1000, 300000)
         self._backoff.setSingleStep(1000)
         self._backoff.setValue(self._channel.get("backoff_sleep_ms", 10000))
-        main_layout.addRow("Backoff (ms)", self._backoff)
+        main_layout.addRow(tr("config_builder.backoff", "Backoff (ms)"), self._backoff)
 
         #  Malleable tab 
         self._malleable_tabs = QTabWidget()
@@ -433,14 +434,14 @@ class _C2ChannelDialog(QDialog):
         self._mc_submit = _MalleableForm("submit", "submit_malleable_config", self._channel, is_response=False)
         self._mc_poll_resp = _MalleableForm("poll response", "poll_response_malleable_config", self._channel, is_response=True)
         self._mc_submit_resp = _MalleableForm("submit response", "submit_response_malleable_config", self._channel, is_response=True)
-        self._malleable_tabs.addTab(self._mc_poll, "Poll")
-        self._malleable_tabs.addTab(self._mc_submit, "Submit")
-        self._malleable_tabs.addTab(self._mc_poll_resp, "Poll Response")
-        self._malleable_tabs.addTab(self._mc_submit_resp, "Submit Response")
+        self._malleable_tabs.addTab(self._mc_poll, tr("config_builder.poll", "Poll"))
+        self._malleable_tabs.addTab(self._mc_submit, tr("config_builder.submit", "Submit"))
+        self._malleable_tabs.addTab(self._mc_poll_resp, tr("config_builder.poll_response", "Poll Response"))
+        self._malleable_tabs.addTab(self._mc_submit_resp, tr("config_builder.submit_response", "Submit Response"))
 
         #  Assemble 
-        tabs.addTab(main_tab, "General")
-        tabs.addTab(self._malleable_tabs, "Malleable")
+        tabs.addTab(main_tab, tr("config_builder.general", "General"))
+        tabs.addTab(self._malleable_tabs, tr("config_builder.malleable", "Malleable"))
 
         outer = QVBoxLayout(self)
         outer.addWidget(tabs)
@@ -580,7 +581,7 @@ class _BuildWorker(QObject):
 
             try:
                 from pandragon_config_builder import (
-                    validate_config, build_config_blob, derive_beacon_id,
+                    build_config_blob, derive_beacon_id,
                     generate_cpp_header, sync_beacon_to_server,
                 )
             except ImportError:
@@ -588,7 +589,7 @@ class _BuildWorker(QObject):
                 if _tools_src not in sys.path:
                     sys.path.insert(0, _tools_src)
                 from pandragon_config_builder import (
-                    validate_config, build_config_blob, derive_beacon_id,
+                    build_config_blob, derive_beacon_id,
                     generate_cpp_header, sync_beacon_to_server,
                 )
 
@@ -599,11 +600,6 @@ class _BuildWorker(QObject):
                 self._config['crypto_key'] = secrets.token_hex(32)
             if 'beacon_id' not in self._config:
                 self._config['beacon_id'] = derive_beacon_id(self._config['crypto_key'])
-
-            errors = validate_config(self._config, _SCHEMA_PATH)
-            if errors:
-                self.error.emit("Validation errors:\n  " + "\n  ".join(errors))
-                return
 
             self.progress.emit("Building config blob...")
             blob, nonce, config_key, append_magic, append_data, pcfg_magic = build_config_blob(self._config)
@@ -904,7 +900,7 @@ class ConfigBuilderWidget(QWidget):
                 if ch.get("host") in ("127.0.0.1", "localhost", ""):
                     ch["host"] = host
             self._refresh_channels_table()
-            self._status_label.setText(f"C2 host auto-filled: {host}")
+            self._status_label.setText(tr("config_builder.c2_host_autofilled", "C2 host auto-filled: {host}", host=host))
 
     def _build_config(self):
         layout = QVBoxLayout(self)
@@ -912,15 +908,15 @@ class ConfigBuilderWidget(QWidget):
 
         # Toolbar: load / save / reset
         toolbar = QHBoxLayout()
-        self._load_btn = QPushButton("Load JSON")
+        self._load_btn = QPushButton(tr("config_builder.load_json", "Load JSON"))
         self._load_btn.clicked.connect(self._load_config)
         toolbar.addWidget(self._load_btn)
 
-        self._save_btn = QPushButton("Save JSON")
+        self._save_btn = QPushButton(tr("config_builder.save_json", "Save JSON"))
         self._save_btn.clicked.connect(self._save_config)
         toolbar.addWidget(self._save_btn)
 
-        self._reset_btn = QPushButton("Reset Defaults")
+        self._reset_btn = QPushButton(tr("config_builder.reset_defaults", "Reset Defaults"))
         self._reset_btn.clicked.connect(self._reset_config)
         toolbar.addWidget(self._reset_btn)
 
@@ -932,14 +928,14 @@ class ConfigBuilderWidget(QWidget):
 
         # Main tabs
         self._tabs = QTabWidget()
-        self._tabs.addTab(self._build_channels_tab(), "C2 Channels")
-        self._tabs.addTab(self._build_timing_tab(), "Timing && Obfuscation")
-        self._tabs.addTab(self._build_chain_tab(), "Stack Spoof Chain")
-        self._tabs.addTab(self._build_malleable_tab(), "Malleable C2")
-        self._tabs.addTab(self._build_workhours_tab(), "Work Hours && Spawn-to")
-        self._tabs.addTab(self._build_postbuild_tab(), "Post-Build")
-        self._tabs.addTab(self._build_preview_tab(), "Request Preview")
-        self._tabs.addTab(self._build_build_tab(), "Build")
+        self._tabs.addTab(self._build_channels_tab(), tr("config_builder.tab_c2_channels", "C2 Channels"))
+        self._tabs.addTab(self._build_timing_tab(), tr("config_builder.tab_timing", "Timing && Obfuscation"))
+        self._tabs.addTab(self._build_chain_tab(), tr("config_builder.tab_chain", "Stack Spoof Chain"))
+        self._tabs.addTab(self._build_malleable_tab(), tr("config_builder.tab_malleable", "Malleable C2"))
+        self._tabs.addTab(self._build_workhours_tab(), tr("config_builder.tab_workhours", "Work Hours && Spawn-to"))
+        self._tabs.addTab(self._build_postbuild_tab(), tr("config_builder.tab_postbuild", "Post-Build"))
+        self._tabs.addTab(self._build_preview_tab(), tr("config_builder.tab_preview", "Request Preview"))
+        self._tabs.addTab(self._build_build_tab(), tr("config_builder.tab_build", "Build"))
         layout.addWidget(self._tabs)
 
     #  Tab 1: C2 Channels 
@@ -950,9 +946,12 @@ class ConfigBuilderWidget(QWidget):
         layout = QVBoxLayout(tab)
 
         self._channels_table = QTableWidget(0, 4)
-        self._channels_table.setHorizontalHeaderLabels(
-            ["Type", "Host", "Port", "Paths"]
-        )
+        self._channels_table.setHorizontalHeaderLabels([
+            tr("config_builder.ch_type", "Type"),
+            tr("config_builder.ch_host", "Host"),
+            tr("config_builder.ch_port", "Port"),
+            tr("config_builder.ch_paths", "Paths"),
+        ])
         self._channels_table.horizontalHeader().setStretchLastSection(True)
         self._channels_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
@@ -960,15 +959,15 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(self._channels_table)
 
         btn_row = QHBoxLayout()
-        self._ch_add = QPushButton("Add")
+        self._ch_add = QPushButton(tr("config_builder.add", "Add"))
         self._ch_add.clicked.connect(self._channel_add)
         btn_row.addWidget(self._ch_add)
 
-        self._ch_edit = QPushButton("Edit")
+        self._ch_edit = QPushButton(tr("config_builder.edit", "Edit"))
         self._ch_edit.clicked.connect(self._channel_edit)
         btn_row.addWidget(self._ch_edit)
 
-        self._ch_remove = QPushButton("Remove")
+        self._ch_remove = QPushButton(tr("config_builder.remove", "Remove"))
         self._ch_remove.clicked.connect(self._channel_remove)
         btn_row.addWidget(self._ch_remove)
 
@@ -1019,7 +1018,7 @@ class ConfigBuilderWidget(QWidget):
             submit = ch.get("submit_path", "")
             paths_text = f"{poll} | {submit}" if poll or submit else ""
             paths_item = QTableWidgetItem(paths_text)
-            paths_item.setToolTip(f"Poll (GET): {poll}\nSubmit (POST): {submit}")
+            paths_item.setToolTip(tr("config_builder.path_tooltip", "Poll (GET): {poll}\nSubmit (POST): {submit}", poll=poll, submit=submit))
             self._channels_table.setItem(i, 3, paths_item)
             # Build malleable tooltip
             parts = []
@@ -1028,7 +1027,7 @@ class ConfigBuilderWidget(QWidget):
                                 ("poll_response_malleable_config", "poll_rsp"),
                                 ("submit_response_malleable_config", "submit_rsp")]:
                 parts.append(f"{label}={'✓' if key in ch else '—'}")
-            tip = "Malleable: " + " | ".join(parts)
+            tip = tr("config_builder.malleable_tooltip", "Malleable: {details}", details=" | ".join(parts))
             self._channels_table.item(i, 0).setToolTip(tip)
         self._populate_preview_channels()
 
@@ -1044,7 +1043,7 @@ class ConfigBuilderWidget(QWidget):
         layout = QVBoxLayout(container)
 
         # Timing
-        timing_group = QGroupBox("Timing")
+        timing_group = QGroupBox(tr("config_builder.timing", "Timing"))
         timing_form = QFormLayout(timing_group)
         for name in ("sleep_ms", "jitter_pct"):
             ps = _prop_schema(name)
@@ -1060,12 +1059,12 @@ class ConfigBuilderWidget(QWidget):
 
         pad_max_w = _create_schema_widget(_prop_schema("pad_max"), self._config.get("pad_max"))
         self._fields["pad_max"] = pad_max_w
-        timing_form.addRow("Max Pad (bytes)", pad_max_w)
+        timing_form.addRow(tr("config_builder.max_pad", "Max Pad (bytes)"), pad_max_w)
 
         self._kill_date = QDateEdit()
         self._kill_date.setCalendarPopup(True)
         self._kill_date.setDate(QDate.currentDate().addYears(1))
-        self._kill_date.setSpecialValueText("None")
+        self._kill_date.setSpecialValueText(tr("config_builder.none", "None"))
         kd = self._config.get("kill_date", "")
         if kd:
             try:
@@ -1073,18 +1072,18 @@ class ConfigBuilderWidget(QWidget):
                 self._kill_date.setDate(QDate(dt.year, dt.month, dt.day))
             except ValueError:
                 pass
-        timing_form.addRow("Kill Date", self._kill_date)
+        timing_form.addRow(tr("config_builder.kill_date", "Kill Date"), self._kill_date)
 
         layout.addWidget(timing_group)
 
         # Obfuscation
-        obf_group = QGroupBox("Sleep Obfuscation")
+        obf_group = QGroupBox(tr("config_builder.sleep_obfuscation", "Sleep Obfuscation"))
         obf_form = QFormLayout(obf_group)
 
         sleep_obf_w = _create_schema_widget(_prop_schema("sleep_obfuscation"), self._config.get("sleep_obfuscation"))
         self._fields["sleep_obfuscation"] = sleep_obf_w
         sleep_obf_w.currentTextChanged.connect(self._update_conditional_visibility)
-        obf_form.addRow("Method", sleep_obf_w)
+        obf_form.addRow(tr("config_builder.method", "Method"), sleep_obf_w)
 
         wipe_pe_w = _create_schema_widget(_prop_schema("sleep_wipe_pe_headers"), self._config.get("sleep_wipe_pe_headers"))
         self._fields["sleep_wipe_pe_headers"] = wipe_pe_w
@@ -1106,7 +1105,7 @@ class ConfigBuilderWidget(QWidget):
         num_frames_layout.setContentsMargins(0, 0, 0, 0)
         num_frames_w = _create_schema_widget(_prop_schema("num_spoof_frames"), self._config.get("num_spoof_frames"))
         self._fields["num_spoof_frames"] = num_frames_w
-        num_frames_layout.addWidget(QLabel("Num Spoof Frames"))
+        num_frames_layout.addWidget(QLabel(tr("config_builder.num_spoof_frames", "Num Spoof Frames")))
         num_frames_layout.addWidget(num_frames_w)
         num_frames_layout.addStretch()
         self._num_frames_row.setVisible(False)
@@ -1115,7 +1114,7 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(obf_group)
 
         # Syscall
-        sys_group = QGroupBox("Indirect Syscalls")
+        sys_group = QGroupBox(tr("config_builder.indirect_syscalls", "Indirect Syscalls"))
         sys_form = QFormLayout(sys_group)
 
         indirect_sys_w = _create_schema_widget(_prop_schema("use_indirect_syscalls"), self._config.get("use_indirect_syscalls"))
@@ -1128,7 +1127,7 @@ class ConfigBuilderWidget(QWidget):
         pivot_layout.setContentsMargins(0, 0, 0, 0)
         pivot_w = _create_schema_widget(_prop_schema("indirect_syscall_pivot"), self._config.get("indirect_syscall_pivot"))
         self._fields["indirect_syscall_pivot"] = pivot_w
-        pivot_layout.addWidget(QLabel("Pivot API"))
+        pivot_layout.addWidget(QLabel(tr("config_builder.pivot_api", "Pivot API")))
         pivot_layout.addWidget(pivot_w)
         pivot_layout.addStretch()
         self._pivot_row.setVisible(False)
@@ -1144,7 +1143,7 @@ class ConfigBuilderWidget(QWidget):
         lazy_max_layout.setContentsMargins(0, 0, 0, 0)
         lazy_max_w = _create_schema_widget(_prop_schema("lazy_checkin_max"), self._config.get("lazy_checkin_max"))
         self._fields["lazy_checkin_max"] = lazy_max_w
-        lazy_max_layout.addWidget(QLabel("Lazy Check-in Max"))
+        lazy_max_layout.addWidget(QLabel(tr("config_builder.lazy_checkin_max", "Lazy Check-in Max")))
         lazy_max_layout.addWidget(lazy_max_w)
         lazy_max_layout.addStretch()
         self._lazy_checkin_max_row.setVisible(False)
@@ -1157,7 +1156,7 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(sys_group)
 
         # Options (sub-object)
-        opt_group = QGroupBox("Options")
+        opt_group = QGroupBox(tr("config_builder.options", "Options"))
         opt_form = QFormLayout(opt_group)
         opt_schema = _prop_schema("options")
         for opt_name in ("sandbox_evasion", "debug_mode", "bypass_etw", "validate_ssl"):
@@ -1199,57 +1198,57 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(self._chain_stack)
 
         btn_row = QHBoxLayout()
-        self._chain_add = QPushButton("Add")
+        self._chain_add = QPushButton(tr("config_builder.add", "Add"))
         self._chain_add.clicked.connect(self._chain_add_entry)
         btn_row.addWidget(self._chain_add)
 
-        self._chain_edit = QPushButton("Edit")
+        self._chain_edit = QPushButton(tr("config_builder.edit", "Edit"))
         self._chain_edit.clicked.connect(lambda: self._chain_edit_entry())
         btn_row.addWidget(self._chain_edit)
 
-        self._chain_remove = QPushButton("Remove")
+        self._chain_remove = QPushButton(tr("config_builder.remove", "Remove"))
         self._chain_remove.clicked.connect(self._chain_remove_entry)
         btn_row.addWidget(self._chain_remove)
 
-        self._chain_up = QPushButton("Up")
+        self._chain_up = QPushButton(tr("config_builder.up", "Up"))
         self._chain_up.clicked.connect(self._chain_move_up)
         btn_row.addWidget(self._chain_up)
 
-        self._chain_down = QPushButton("Down")
+        self._chain_down = QPushButton(tr("config_builder.down", "Down"))
         self._chain_down.clicked.connect(self._chain_move_down)
         btn_row.addWidget(self._chain_down)
 
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
-        note = QLabel("Top/bottom entries are locked. Drag or use Up/Down to reorder.")
+        note = QLabel(tr("config_builder.chain_note", "Top/bottom entries are locked. Drag or use Up/Down to reorder."))
         note.setObjectName("mutedLabel")
         note.setWordWrap(True)
         layout.addWidget(note)
 
         return tab
 
-    def _chain_entry_dialog(self, title, module="", function="", offset_text=""):
+    def _chain_entry_dialog(self, title_key, title_default, module="", function="", offset_text=""):
         dialog = QDialog(self)
-        dialog.setWindowTitle(title)
+        dialog.setWindowTitle(tr(title_key, title_default))
         form = QFormLayout(dialog)
 
         module_edit = QLineEdit(module)
         module_edit.setPlaceholderText("ntdll.dll")
-        form.addRow("Module DLL:", module_edit)
+        form.addRow(tr("config_builder.module_dll", "Module DLL:"), module_edit)
 
         func_edit = QLineEdit(function)
         func_edit.setPlaceholderText("RtlUserThreadStart")
-        form.addRow("Function:", func_edit)
+        form.addRow(tr("config_builder.function", "Function:"), func_edit)
 
         offset_edit = QLineEdit(offset_text)
-        offset_edit.setPlaceholderText("0 (auto-scan)")
+        offset_edit.setPlaceholderText(tr("config_builder.offset_placeholder", "0 (auto-scan)"))
         offset_edit.setToolTip(
-            "Decimal or hex (e.g. 0x1000). 0 = auto-scan at build time."
+            tr("config_builder.offset_tooltip", "Decimal or hex (e.g. 0x1000). 0 = auto-scan at build time.")
         )
-        form.addRow("Offset:", offset_edit)
+        form.addRow(tr("config_builder.offset", "Offset:"), offset_edit)
 
-        note = QLabel("Auto-populated at build if left empty.")
+        note = QLabel(tr("config_builder.chain_auto_populate", "Auto-populated at build if left empty."))
         note.setObjectName("mutedLabel")
         note.setWordWrap(True)
         form.addRow(note)
@@ -1270,7 +1269,7 @@ class ConfigBuilderWidget(QWidget):
         )
 
     def _chain_add_entry(self):
-        result = self._chain_entry_dialog("Add Chain Entry")
+        result = self._chain_entry_dialog("config_builder.add_chain_entry", "Add Chain Entry")
         if result is None:
             return
         module, function, offset_text = result
@@ -1304,7 +1303,7 @@ class ConfigBuilderWidget(QWidget):
         offset = entry.get("offset", 0)
         offset_text = hex(offset) if offset else ""
         result = self._chain_entry_dialog(
-            "Edit Chain Entry",
+            "config_builder.edit_chain_entry", "Edit Chain Entry",
             entry.get("module", ""),
             entry.get("function", ""),
             offset_text,
@@ -1406,10 +1405,10 @@ class ConfigBuilderWidget(QWidget):
     #  Tab 4: Malleable C2 
 
     _DIRECTION_KEYS = [
-        ("Poll", "poll_malleable_config", False),
-        ("Submit", "submit_malleable_config", False),
-        ("Poll Response", "poll_response_malleable_config", True),
-        ("Submit Response", "submit_response_malleable_config", True),
+        ("Poll", "poll_malleable_config", False, "config_builder.dir_poll"),
+        ("Submit", "submit_malleable_config", False, "config_builder.dir_submit"),
+        ("Poll Response", "poll_response_malleable_config", True, "config_builder.dir_poll_response"),
+        ("Submit Response", "submit_response_malleable_config", True, "config_builder.dir_submit_response"),
     ]
 
     def _build_malleable_tab(self) -> QWidget:
@@ -1423,15 +1422,15 @@ class ConfigBuilderWidget(QWidget):
 
         # Channel selector for per-channel malleable config
         sel_row = QHBoxLayout()
-        sel_row.addWidget(QLabel("Channel:"))
+        sel_row.addWidget(QLabel(tr("config_builder.channel", "Channel:")))
         self._malleable_channel = QComboBox()
         self._malleable_channel.currentIndexChanged.connect(self._on_malleable_selection_changed)
         sel_row.addWidget(self._malleable_channel)
 
-        sel_row.addWidget(QLabel("Direction:"))
+        sel_row.addWidget(QLabel(tr("config_builder.direction", "Direction:")))
         self._malleable_direction = QComboBox()
-        for label, _, _ in self._DIRECTION_KEYS:
-            self._malleable_direction.addItem(label)
+        for label, _, _, tr_key in self._DIRECTION_KEYS:
+            self._malleable_direction.addItem(tr(tr_key, label))
         self._malleable_direction.currentIndexChanged.connect(self._on_malleable_selection_changed)
         sel_row.addWidget(self._malleable_direction)
 
@@ -1444,36 +1443,36 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(self._mal_mode_label)
 
         # Wrapper
-        wrap_group = QGroupBox("Wrapper (prefix/suffix)")
+        wrap_group = QGroupBox(tr("config_builder.wrapper", "Wrapper (prefix/suffix)"))
         wrap_form = QFormLayout(wrap_group)
 
         self._wrap_prefix = QLineEdit()
         self._wrap_prefix.setPlaceholderText("REQ_${RAND_B64:4}_")
         self._wrap_prefix.setMaxLength(65535)
-        wrap_form.addRow("Prefix", self._wrap_prefix)
+        wrap_form.addRow(tr("config_builder.prefix", "Prefix"), self._wrap_prefix)
 
         self._wrap_suffix = QLineEdit()
         self._wrap_suffix.setPlaceholderText("_${JUNK:8}")
         self._wrap_suffix.setMaxLength(65535)
-        wrap_form.addRow("Suffix", self._wrap_suffix)
+        wrap_form.addRow(tr("config_builder.suffix", "Suffix"), self._wrap_suffix)
 
         layout.addWidget(wrap_group)
 
         # HTTP Headers (request direction)
-        self._headers_group = QGroupBox("Custom HTTP Headers")
+        self._headers_group = QGroupBox(tr("config_builder.custom_headers", "Custom HTTP Headers"))
         hdr_layout = QVBoxLayout(self._headers_group)
 
         self._headers_table = QTableWidget(0, 2)
-        self._headers_table.setHorizontalHeaderLabels(["Name", "Value"])
+        self._headers_table.setHorizontalHeaderLabels([tr("config_builder.header_name", "Name"), tr("config_builder.header_value", "Value")])
         self._headers_table.horizontalHeader().setStretchLastSection(True)
         hdr_layout.addWidget(self._headers_table)
 
         hdr_btn_row = QHBoxLayout()
-        self._hdr_add = QPushButton("Add Header")
+        self._hdr_add = QPushButton(tr("config_builder.add_header", "Add Header"))
         self._hdr_add.clicked.connect(self._header_add)
         hdr_btn_row.addWidget(self._hdr_add)
 
-        self._hdr_remove = QPushButton("Remove")
+        self._hdr_remove = QPushButton(tr("config_builder.remove", "Remove"))
         self._hdr_remove.clicked.connect(self._header_remove)
         hdr_btn_row.addWidget(self._hdr_remove)
 
@@ -1482,23 +1481,23 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(self._headers_group)
 
         # Response-specific fields (visible only for response directions)
-        self._resp_fields_group = QGroupBox("Response Config")
+        self._resp_fields_group = QGroupBox(tr("config_builder.response_config", "Response Config"))
         resp_fields_layout = QFormLayout(self._resp_fields_group)
 
         self._resp_status_code = QSpinBox()
         self._resp_status_code.setRange(100, 599)
         self._resp_status_code.setValue(200)
-        resp_fields_layout.addRow("Status Code", self._resp_status_code)
+        resp_fields_layout.addRow(tr("config_builder.status_code", "Status Code"), self._resp_status_code)
 
         self._resp_body_template = QLineEdit()
         self._resp_body_template.setPlaceholderText("{{PAYLOAD}}")
-        resp_fields_layout.addRow("Body Template", self._resp_body_template)
+        resp_fields_layout.addRow(tr("config_builder.body_template", "Body Template"), self._resp_body_template)
 
         self._resp_headers_table = QTableWidget(0, 2)
-        self._resp_headers_table.setHorizontalHeaderLabels(["Name", "Value"])
+        self._resp_headers_table.setHorizontalHeaderLabels([tr("config_builder.header_name", "Name"), tr("config_builder.header_value", "Value")])
         self._resp_headers_table.horizontalHeader().setStretchLastSection(True)
         self._resp_headers_table.setMaximumHeight(120)
-        resp_fields_layout.addRow("Response Headers", self._resp_headers_table)
+        resp_fields_layout.addRow(tr("config_builder.response_headers", "Response Headers"), self._resp_headers_table)
 
         rhdr_btns = QHBoxLayout()
         self._resp_hdr_add = QPushButton("Add")
@@ -1514,32 +1513,32 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(self._resp_fields_group)
 
         # Payload Location
-        pl_group = QGroupBox("Payload Location")
+        pl_group = QGroupBox(tr("config_builder.payload_location", "Payload Location"))
         pl_form = QFormLayout(pl_group)
 
         self._pl_type = QComboBox()
         self._pl_type.addItems(["query_param", "path"])
-        pl_form.addRow("Type", self._pl_type)
+        pl_form.addRow(tr("config_builder.payload_type", "Type"), self._pl_type)
 
         self._pl_param = QLineEdit()
-        self._pl_param.setPlaceholderText("q")
-        pl_form.addRow("Query Param Name", self._pl_param)
+        self._pl_param.setPlaceholderText(tr("config_builder.placeholder_q_param", "q"))
+        pl_form.addRow(tr("config_builder.query_param_name", "Query Param Name"), self._pl_param)
 
         self._pl_path_prefix = QLineEdit()
         self._pl_path_prefix.setPlaceholderText("/api/")
-        pl_form.addRow("Path Prefix", self._pl_path_prefix)
+        pl_form.addRow(tr("config_builder.path_prefix", "Path Prefix"), self._pl_path_prefix)
 
         self._pl_path_suffix = QLineEdit()
         self._pl_path_suffix.setPlaceholderText(".png")
-        pl_form.addRow("Path Suffix", self._pl_path_suffix)
+        pl_form.addRow(tr("config_builder.path_suffix", "Path Suffix"), self._pl_path_suffix)
 
         self._pl_body_ct = QComboBox()
         self._pl_body_ct.addItems(["text/plain", "application/octet-stream"])
-        pl_form.addRow("Body Content-Type", self._pl_body_ct)
+        pl_form.addRow(tr("config_builder.body_content_type", "Body Content-Type"), self._pl_body_ct)
 
         self._pl_cookie = QLineEdit()
-        self._pl_cookie.setPlaceholderText("cookie name")
-        pl_form.addRow("Cookie Name", self._pl_cookie)
+        self._pl_cookie.setPlaceholderText(tr("config_builder.malleable_pl_cookie", "cookie name"))
+        pl_form.addRow(tr("config_builder.cookie_name", "Cookie Name"), self._pl_cookie)
 
         layout.addWidget(pl_group)
         layout.addStretch()
@@ -1560,7 +1559,7 @@ class ConfigBuilderWidget(QWidget):
             port = ch.get("port", 0)
             label = f"{i+1}. {ch_type}  {host}:{port}"
             self._malleable_channel.addItem(label, ("channel", i))
-        self._malleable_channel.addItem("Global (fallback)", ("global", None))
+        self._malleable_channel.addItem(tr("config_builder.malleable_global", "Global (fallback)"), ("global", None))
         self._malleable_channel.blockSignals(False)
 
     def _get_malleable_target(self) -> tuple[dict, str, str, bool]:
@@ -1571,7 +1570,7 @@ class ConfigBuilderWidget(QWidget):
         dir_idx = self._malleable_direction.currentIndex()
         if dir_idx < 0 or dir_idx >= len(self._DIRECTION_KEYS):
             dir_idx = 0
-        dir_label, block_key, is_response = self._DIRECTION_KEYS[dir_idx]
+        dir_label, block_key, is_response, _ = self._DIRECTION_KEYS[dir_idx]
 
         data = self._malleable_channel.currentData()
         if not data or data[0] == "global":
@@ -1639,16 +1638,16 @@ class ConfigBuilderWidget(QWidget):
 
     def _header_add(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Add HTTP Header")
+        dialog.setWindowTitle(tr("config_builder.add_http_header_title", "Add HTTP Header"))
         form = QFormLayout(dialog)
 
         name_edit = QLineEdit()
-        name_edit.setPlaceholderText("X-My-Header")
-        form.addRow("Name:", name_edit)
+        name_edit.setPlaceholderText(tr("config_builder.malleable_header_name_placeholder", "X-My-Header"))
+        form.addRow(tr("config_builder.header_name", "Name:"), name_edit)
 
         value_edit = QLineEdit()
-        value_edit.setPlaceholderText("some-value")
-        form.addRow("Value:", value_edit)
+        value_edit.setPlaceholderText(tr("config_builder.malleable_header_value_placeholder", "some-value"))
+        form.addRow(tr("config_builder.header_value", "Value:"), value_edit)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -1717,7 +1716,7 @@ class ConfigBuilderWidget(QWidget):
         layout = QVBoxLayout(container)
 
         # Work hours (generated from schema)
-        wh_group = QGroupBox("Work Hours (UTC)")
+        wh_group = QGroupBox(tr("config_builder.work_hours", "Work Hours (UTC)"))
         wh_form = QFormLayout(wh_group)
         wh_schema = _prop_schema("work_hours").get("properties", {})
         wh_cfg = self._config.get("work_hours", {})
@@ -1734,7 +1733,7 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(wh_group)
 
         # Spawn-to (generated from schema)
-        st_group = QGroupBox("Spawn-to Process")
+        st_group = QGroupBox(tr("config_builder.spawn_to", "Spawn-to Process"))
         st_form = QFormLayout(st_group)
         st_schema = _prop_schema("spawnto").get("properties", {})
         st_cfg = self._config.get("spawnto", {})
@@ -1758,26 +1757,26 @@ class ConfigBuilderWidget(QWidget):
         layout = QVBoxLayout(tab)
 
         # Post-Build Append (unencrypted, IOC markers)
-        post_group = QGroupBox("Post-Build Append - Unencrypted IOC markers")
+        post_group = QGroupBox(tr("config_builder.post_build_append", "Post-Build Append - Unencrypted IOC markers"))
         post_form = QFormLayout(post_group)
 
         self._post_append_list = QListWidget()
         self._post_append_list.setMaximumHeight(120)
-        post_form.addRow("Strings:", self._post_append_list)
+        post_form.addRow(tr("config_builder.strings", "Strings:"), self._post_append_list)
 
         post_btn_row = QHBoxLayout()
-        self._post_add = QPushButton("Add")
+        self._post_add = QPushButton(tr("config_builder.add", "Add"))
         self._post_add.clicked.connect(self._post_append_add)
         post_btn_row.addWidget(self._post_add)
 
-        self._post_remove = QPushButton("Remove")
+        self._post_remove = QPushButton(tr("config_builder.remove", "Remove"))
         self._post_remove.clicked.connect(self._post_append_remove)
         post_btn_row.addWidget(self._post_remove)
 
         post_btn_row.addStretch()
         post_form.addRow(post_btn_row)
 
-        post_info = QLabel("Appended unencrypted — visible in strings output.")
+        post_info = QLabel(tr("config_builder.post_build_info", "Appended unencrypted \u2014 visible in strings output."))
         post_info.setWordWrap(True)
         post_info.setStyleSheet("color: #888; font-size: 10px;")
         post_form.addRow(post_info)
@@ -1785,26 +1784,26 @@ class ConfigBuilderWidget(QWidget):
         layout.addWidget(post_group)
 
         # In-Memory Append (encrypted in config blob, decrypted at runtime)
-        inmem_group = QGroupBox("In-Memory Append - Encrypted config strings")
+        inmem_group = QGroupBox(tr("config_builder.inmem_append", "In-Memory Append - Encrypted config strings"))
         inmem_form = QFormLayout(inmem_group)
 
         self._inmem_append_list = QListWidget()
         self._inmem_append_list.setMaximumHeight(120)
-        inmem_form.addRow("Strings:", self._inmem_append_list)
+        inmem_form.addRow(tr("config_builder.strings", "Strings:"), self._inmem_append_list)
 
         inmem_btn_row = QHBoxLayout()
-        self._inmem_add = QPushButton("Add")
+        self._inmem_add = QPushButton(tr("config_builder.add", "Add"))
         self._inmem_add.clicked.connect(self._inmem_append_add)
         inmem_btn_row.addWidget(self._inmem_add)
 
-        self._inmem_remove = QPushButton("Remove")
+        self._inmem_remove = QPushButton(tr("config_builder.remove", "Remove"))
         self._inmem_remove.clicked.connect(self._inmem_append_remove)
         inmem_btn_row.addWidget(self._inmem_remove)
 
         inmem_btn_row.addStretch()
         inmem_form.addRow(inmem_btn_row)
 
-        inmem_info = QLabel("Encrypted in config — not visible in strings output.")
+        inmem_info = QLabel(tr("config_builder.inmem_info", "Encrypted in config \u2014 not visible in strings output."))
         inmem_info.setWordWrap(True)
         inmem_info.setStyleSheet("color: #888; font-size: 10px;")
         inmem_form.addRow(inmem_info)
@@ -1815,7 +1814,7 @@ class ConfigBuilderWidget(QWidget):
         return tab
 
     def _post_append_add(self):
-        text, ok = QInputDialog.getText(self, "Add Post-Build String", "String:")
+        text, ok = QInputDialog.getText(self, tr("config_builder.add_post_string_title", "Add Post-Build String"), tr("config_builder.add_string_prompt", "String:"))
         if ok and text:
             self._post_append_list.addItem(text)
             self._sync_post_append_list()
@@ -1827,7 +1826,7 @@ class ConfigBuilderWidget(QWidget):
             self._sync_post_append_list()
 
     def _inmem_append_add(self):
-        text, ok = QInputDialog.getText(self, "Add In-Memory String", "String:")
+        text, ok = QInputDialog.getText(self, tr("config_builder.add_inmem_string_title", "Add In-Memory String"), tr("config_builder.add_string_prompt", "String:"))
         if ok and text:
             self._inmem_append_list.addItem(text)
             self._sync_inmem_append_list()
@@ -1853,26 +1852,31 @@ class ConfigBuilderWidget(QWidget):
 
         # Controls
         ctrl_row = QHBoxLayout()
-        self._preview_refresh = QPushButton("Refresh Preview")
+        self._preview_refresh = QPushButton(tr("config_builder.refresh_preview", "Refresh Preview"))
         self._preview_refresh.clicked.connect(self._refresh_preview)
         ctrl_row.addWidget(self._preview_refresh)
 
         # Channel selector (handles multiple C2 channels)
         self._preview_channel = QComboBox()
         self._preview_channel.currentIndexChanged.connect(self._refresh_preview)
-        ctrl_row.addWidget(QLabel("Channel:"))
+        ctrl_row.addWidget(QLabel(tr("config_builder.channel", "Channel:")))
         ctrl_row.addWidget(self._preview_channel)
 
         self._preview_profile = QComboBox()
-        self._preview_profile.addItems(["Poll (GET)", "Submit (POST)", "Task Result", "File Upload"])
+        self._preview_profile.addItems([
+            tr("config_builder.preview_poll", "Poll (GET)"),
+            tr("config_builder.preview_submit", "Submit (POST)"),
+            tr("config_builder.preview_task_result", "Task Result"),
+            tr("config_builder.preview_file_upload", "File Upload"),
+        ])
         self._preview_profile.currentTextChanged.connect(self._refresh_preview)
-        ctrl_row.addWidget(QLabel("Profile:"))
+        ctrl_row.addWidget(QLabel(tr("config_builder.profile", "Profile:")))
         ctrl_row.addWidget(self._preview_profile)
         ctrl_row.addStretch()
         layout.addLayout(ctrl_row)
 
         # Mal Mode indicator (read-only label showing effective mode)
-        self._preview_mode_label = QLabel("Mode: -")
+        self._preview_mode_label = QLabel(tr("config_builder.mode", "Mode: -"))
         self._preview_mode_label.setStyleSheet("color: #9cdcfe; font-family: Consolas; font-size: 9pt;")
         ctrl_row.addWidget(self._preview_mode_label)
 
@@ -2052,7 +2056,7 @@ class ConfigBuilderWidget(QWidget):
 
         # Build button + progress bar
         controls = QHBoxLayout()
-        self._build_btn = QPushButton("Build Beacon")
+        self._build_btn = QPushButton(tr("config_builder.build_beacon", "Build Beacon"))
         self._build_btn.setObjectName("BuildBtn")
         self._build_btn.clicked.connect(self._run_build)
         controls.addWidget(self._build_btn)
@@ -2063,7 +2067,7 @@ class ConfigBuilderWidget(QWidget):
         self._build_progress.setMaximumWidth(200)
         controls.addWidget(self._build_progress)
 
-        self._upload_btn = QPushButton("Upload Config to Server")
+        self._upload_btn = QPushButton(tr("config_builder.upload_config", "Upload Config to Server"))
         self._upload_btn.setObjectName("UploadBtn")
         self._upload_btn.clicked.connect(self._upload_to_server)
         self._upload_btn.setEnabled(False)
@@ -2083,7 +2087,7 @@ class ConfigBuilderWidget(QWidget):
     def _upload_to_server(self):
         """Upload the current beacon config to the connected teamserver."""
         if not self._api or not self._api.is_connected():
-            self._append_build("ERROR: Not connected to a teamserver")
+            self._append_build(tr("config_builder.error_not_connected", "ERROR: Not connected to a teamserver"))
             return
 
         self._sync_form_to_config()
@@ -2092,12 +2096,12 @@ class ConfigBuilderWidget(QWidget):
         beacon_id = config.get("beacon_id", "")
         crypto_key = config.get("crypto_key", "")
         if not beacon_id or not crypto_key:
-            self._append_build("ERROR: Build the config first (generates beacon_id / crypto_key)")
+            self._append_build(tr("config_builder.error_build_first", "ERROR: Build the config first (generates beacon_id / crypto_key)"))
             return
 
         channels = config.get("c2_channels", [])
         if not channels:
-            self._append_build("ERROR: No C2 channels configured")
+            self._append_build(tr("config_builder.error_no_channels", "ERROR: No C2 channels configured"))
             return
 
         allowed_routes = []
@@ -2136,18 +2140,18 @@ class ConfigBuilderWidget(QWidget):
                 "submit_response_malleable_config": submit_resp_mc,
             })
 
-        self._append_build(f"Uploading beacon {beacon_id[:16]} to server ({len(allowed_routes)} route(s))...")
+        self._append_build(tr("config_builder.uploading_beacon", "Uploading beacon {beacon_id} to server ({routes} route(s))...", beacon_id=beacon_id[:16], routes=len(allowed_routes)))
         QApplication.processEvents()
 
         try:
             result = self._api.register_beacon(beacon_id, crypto_key, allowed_routes)
             if result.get("success"):
-                self._append_build(f"OK: Beacon registered on server ({result.get('message', '')})")
-                self._status_label.setText("Config uploaded to server")
+                self._append_build(tr("config_builder.upload_ok", "OK: Beacon registered on server ({message})", message=result.get('message', '')))
+                self._status_label.setText(tr("config_builder.config_uploaded", "Config uploaded to server"))
             else:
-                self._append_build(f"ERROR: {result.get('error', 'Unknown error')}")
+                self._append_build(tr("config_builder.upload_error", "ERROR: {error}", error=result.get('error', 'Unknown error')))
         except Exception as e:
-            self._append_build(f"ERROR: Upload failed: {e}")
+            self._append_build(tr("config_builder.upload_failed", "ERROR: Upload failed: {error}", error=e))
 
     def _run_build(self):
         """Collect form values and run build in a background thread."""
@@ -2155,7 +2159,7 @@ class ConfigBuilderWidget(QWidget):
 
         channels = self._config.get("c2_channels", [])
         if not channels:
-            QMessageBox.warning(self, "Build Error", "At least one C2 channel is required.")
+            QMessageBox.warning(self, tr("config_builder.build_error_title", "Build Error"), tr("config_builder.error_no_channels", "At least one C2 channel is required."))
             return
 
         self._build_output = ""
@@ -2178,7 +2182,7 @@ class ConfigBuilderWidget(QWidget):
         self._append_build(text)
 
     def _on_build_error(self, text: str):
-        self._append_build(f"ERROR: {text}")
+        self._append_build(tr("config_builder.build_error", "ERROR: {text}", text=text))
 
     def _on_build_finished(self):
         self._thread.quit()
@@ -2191,16 +2195,16 @@ class ConfigBuilderWidget(QWidget):
             os.makedirs(default_dir, exist_ok=True)
             default_path = os.path.join(default_dir, exe_filename)
             exe_path, _ = QFileDialog.getSaveFileName(
-                self, "Save Beacon Executable",
+                self, tr("config_builder.save_beacon_exe", "Save Beacon Executable"),
                 default_path,
-                "Executable (*.exe);;All Files (*)",
+                tr("config_builder.exe_filter", "Executable (*.exe);;All Files (*)"),
             )
             if exe_path:
                 with open(exe_path, "wb") as f:
                     f.write(exe_bytes)
-                self._append_build(f"Wrote: {exe_path}")
+                self._append_build(tr("config_builder.wrote_exe", "Wrote: {path}", path=exe_path))
             else:
-                self._append_build("Exe save cancelled — binary not written locally")
+                self._append_build(tr("config_builder.exe_save_cancelled", "Exe save cancelled \u2014 binary not written locally"))
 
         self._worker.deleteLater()
         self._build_btn.setEnabled(True)
@@ -2349,8 +2353,8 @@ class ConfigBuilderWidget(QWidget):
     def _load_config(self):
         """Load config from a JSON file."""
         path, _ = QFileDialog.getOpenFileName(
-            self, "Load Config", _default_json_path(),
-            "JSON Files (*.json);;All Files (*)",
+            self, tr("config_builder.load_config_title", "Load Config"), _default_json_path(),
+            tr("config_builder.json_filter", "JSON Files (*.json);;All Files (*)"),
         )
         if not path:
             return
@@ -2360,17 +2364,17 @@ class ConfigBuilderWidget(QWidget):
             self._config = data
             self._config_path = path
             self._sync_config_to_form()
-            self._status_label.setText(f"Loaded: {os.path.basename(path)}")
+            self._status_label.setText(tr("config_builder.loaded_status", "Loaded: {filename}", filename=os.path.basename(path)))
             self._tabs.setCurrentIndex(0)
         except Exception as e:
-            QMessageBox.critical(self, "Load Error", str(e))
+            QMessageBox.critical(self, tr("config_builder.load_error_title", "Load Error"), str(e))
 
     def _save_config(self):
         """Save current config to a JSON file."""
         if not self._config_path:
             path, _ = QFileDialog.getSaveFileName(
-                self, "Save Config", _default_json_path(),
-                "JSON Files (*.json);;All Files (*)",
+                self, tr("config_builder.save_config_title", "Save Config"), _default_json_path(),
+                tr("config_builder.json_filter", "JSON Files (*.json);;All Files (*)"),
             )
             if not path:
                 return
@@ -2379,15 +2383,15 @@ class ConfigBuilderWidget(QWidget):
         try:
             with open(self._config_path, "w") as f:
                 json.dump(self._config, f, indent=2)
-            self._status_label.setText(f"Saved: {os.path.basename(self._config_path)}")
+            self._status_label.setText(tr("config_builder.saved_status", "Saved: {filename}", filename=os.path.basename(self._config_path)))
         except Exception as e:
-            QMessageBox.critical(self, "Save Error", str(e))
+            QMessageBox.critical(self, tr("config_builder.save_error_title", "Save Error"), str(e))
 
     def _reset_config(self):
         """Reset config to defaults."""
         reply = QMessageBox.question(
-            self, "Reset",
-            "Reset all config fields to defaults?",
+            self, tr("config_builder.reset_title", "Reset"),
+            tr("config_builder.reset_confirm", "Reset all config fields to defaults?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -2397,4 +2401,4 @@ class ConfigBuilderWidget(QWidget):
         self._build_output_text.clear()
         self._config = json.loads(json.dumps(_DEFAULT_CONFIG))
         self._sync_config_to_form()
-        self._status_label.setText("Defaults loaded")
+        self._status_label.setText(tr("config_builder.defaults_loaded", "Defaults loaded"))

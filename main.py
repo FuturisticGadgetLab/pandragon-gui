@@ -19,6 +19,7 @@ from PyQt6.QtGui import QPalette, QColor, QFont
 
 from gui.api_client import PandragonAPI
 from gui.theme import ThemeManager
+from gui.translations.manager import tr, TranslationManager
 from gui.widgets.beacon_table import BeaconTableWidget
 from gui.widgets.beacon_detail import BeaconDetailWidget
 from gui.widgets.task_queue_widget import TaskQueueWidget
@@ -47,7 +48,18 @@ _STATUS_QUIPS = [
     "there are more things in heaven and earth, Horatio\u2026",
     "in the beginning was the Word, and the Word was with God",
     "from the place of the skull, a garden",
-    "skibidi dop dop yes yes"
+    "skibidi dop dop yes yes",
+]
+
+_STATUS_QUIP_KEYS = [
+    "quip.eyes_chico",
+    "quip.bird_of_hermes",
+    "quip.nothing_happens",
+    "quip.quiet_front",
+    "quip.horatio",
+    "quip.word",
+    "quip.skull",
+    "quip.skibidi",
 ]
 
 
@@ -70,29 +82,29 @@ class ConnectPanel(QWidget):
 
         form_w = 400
 
-        title = QLabel("PANDRAGON")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setFont(_MONO_TITLE)
-        title.setFixedWidth(form_w)
-        form.addWidget(title, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self._title = QLabel(tr("connect.title", "PANDRAGON"))
+        self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._title.setFont(_MONO_TITLE)
+        self._title.setFixedWidth(form_w)
+        form.addWidget(self._title, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        subtitle = QLabel("serexp . FGL")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setFont(_MONO)
-        subtitle.setFixedWidth(form_w)
-        form.addWidget(subtitle, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self._subtitle = QLabel(tr("connect.subtitle", "serexp . FGL"))
+        self._subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._subtitle.setFont(_MONO)
+        self._subtitle.setFixedWidth(form_w)
+        form.addWidget(self._subtitle, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         form.addSpacing(16)
 
         self._url = QLineEdit(saved.get("last_url", "wss://127.0.0.1:6767/ws"))
-        self._url.setPlaceholderText("WebSocket URL")
+        self._url.setPlaceholderText(tr("connect.url_placeholder", "WebSocket URL"))
         self._url.setFont(_MONO)
         self._url.setFixedWidth(form_w)
         self._url.returnPressed.connect(self._do_connect)
         form.addWidget(self._url, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self._username = QLineEdit(saved.get("last_username", "operator"))
-        self._username.setPlaceholderText("Username")
+        self._username = QLineEdit(saved.get("last_username", tr("connect.default_username", "operator")))
+        self._username.setPlaceholderText(tr("connect.username_placeholder", "Username"))
         self._username.setFont(_MONO)
         self._username.setFixedWidth(form_w)
         self._username.returnPressed.connect(self._do_connect)
@@ -101,13 +113,13 @@ class ConnectPanel(QWidget):
         token_row = QHBoxLayout()
         token_row.setSpacing(0)
         self._token = QLineEdit(saved.get("last_token", ""))
-        self._token.setPlaceholderText("Token (required)")
+        self._token.setPlaceholderText(tr("connect.token_placeholder", "Token (required)"))
         self._token.setFont(_MONO)
         self._token.setFixedWidth(form_w - 56)
         self._token.returnPressed.connect(self._do_connect)
         token_row.addWidget(self._token)
 
-        self._token_toggle = QPushButton("SHOW")
+        self._token_toggle = QPushButton(tr("connect.token_show", "SHOW"))
         self._token_toggle.setObjectName("tokenToggle")
         self._token_toggle.setFont(_MONO_BOLD)
         self._token_toggle.setFixedWidth(44)
@@ -122,13 +134,13 @@ class ConnectPanel(QWidget):
         form.addWidget(tw, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         chk_row = QHBoxLayout()
-        self._skip_verify = QCheckBox("Skip SSL verify")
+        self._skip_verify = QCheckBox(tr("connect.skip_ssl", "Skip SSL verify"))
         self._skip_verify.setFont(_MONO)
         chk_row.addWidget(self._skip_verify)
 
         chk_row.addStretch()
 
-        self._remember = QCheckBox("Remember")
+        self._remember = QCheckBox(tr("connect.remember", "Remember"))
         self._remember.setFont(_MONO)
         self._remember.setChecked(bool(saved.get("last_token", "")))
         chk_row.addWidget(self._remember)
@@ -140,16 +152,41 @@ class ConnectPanel(QWidget):
 
         form.addSpacing(4)
 
+        lang_row = QHBoxLayout()
+        lang_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lang_row.setSpacing(0)
+        self._lang_en = QPushButton(tr("connect.lang_en", "EN"))
+        self._lang_en.setFont(_MONO_BOLD)
+        self._lang_en.setFixedWidth(50)
+        self._lang_en.setFixedHeight(28)
+        self._lang_en.setCheckable(True)
+        self._lang_en.clicked.connect(lambda: self._set_lang("en"))
+        lang_row.addWidget(self._lang_en)
+        self._lang_zh = QPushButton(tr("connect.lang_zh", "简体"))
+        self._lang_zh.setFont(_MONO_BOLD)
+        self._lang_zh.setFixedWidth(50)
+        self._lang_zh.setFixedHeight(28)
+        self._lang_zh.setCheckable(True)
+        self._lang_zh.clicked.connect(lambda: self._set_lang("zh_CN"))
+        lang_row.addWidget(self._lang_zh)
+        lw = QWidget()
+        lw.setLayout(lang_row)
+        lw.setFixedWidth(form_w)
+        form.addWidget(lw, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self._sync_lang_buttons()
+
+        form.addSpacing(4)
+
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
-        self._connect_btn = QPushButton("CONNECT")
+        self._connect_btn = QPushButton(tr("connect.connect_btn", "CONNECT"))
         self._connect_btn.setObjectName("connectBtn")
         self._connect_btn.setFont(_MONO_BOLD)
         self._connect_btn.setMinimumHeight(36)
         self._connect_btn.clicked.connect(self._do_connect)
         btn_row.addWidget(self._connect_btn)
 
-        self._cancel_btn = QPushButton("CANCEL")
+        self._cancel_btn = QPushButton(tr("connect.cancel_btn", "CANCEL"))
         self._cancel_btn.setObjectName("cancelBtn")
         self._cancel_btn.setFont(_MONO_BOLD)
         self._cancel_btn.setMinimumHeight(36)
@@ -175,20 +212,20 @@ class ConnectPanel(QWidget):
     def _toggle_token_visibility(self):
         if self._token.echoMode() == QLineEdit.EchoMode.Password:
             self._token.setEchoMode(QLineEdit.EchoMode.Normal)
-            self._token_toggle.setText("HIDE")
+            self._token_toggle.setText(tr("connect.token_hide", "HIDE"))
         else:
             self._token.setEchoMode(QLineEdit.EchoMode.Password)
-            self._token_toggle.setText("SHOW")
+            self._token_toggle.setText(tr("connect.token_show", "SHOW"))
 
     def _cancel_connect(self):
         if self._connecting_api:
             self._connecting_api.disconnect()
             self._connecting_api = None
         self._cancel_btn.setVisible(False)
-        self._connect_btn.setText("CONNECT")
+        self._connect_btn.setText(tr("connect.connect_btn", "CONNECT"))
         self._connect_btn.setEnabled(True)
         self._progress.clear_stages()
-        self._progress.add_stage('\u201cThis is the way the world ends\u201d', "info")
+        self._progress.add_stage(tr("connect.cancelled", "\u201cThis is the way the world ends\u201d"), "info")
 
     def _do_connect(self):
         url = self._url.text().strip()
@@ -198,14 +235,14 @@ class ConnectPanel(QWidget):
 
         if not token:
             self._progress.clear_stages()
-            self._progress.add_stage("Token is required", "fail")
+            self._progress.add_stage(tr("connect.token_required", "Token is required"), "fail")
             return
 
         self._progress.clear_stages()
         self._progress.add_stage('\u201cWhen the Lamb of God spoke, there was Silence in Heaven for about half an hour\u201d', "busy")
         self._progress.add_stage('\u201cAnd the light shineth in darkness; and the darkness comprehended it not\u201d', "busy")
 
-        self._connect_btn.setText("CONNECTING...")
+        self._connect_btn.setText(tr("connect.connecting_btn", "CONNECTING..."))
         self._connect_btn.setEnabled(False)
         self._cancel_btn.setVisible(True)
 
@@ -221,11 +258,11 @@ class ConnectPanel(QWidget):
         api.connection_error.connect(_on_auth_error)
 
         if not api.connect(token, username, ssl_verify=verify_ssl):
-            msg = auth_error[0] or "Failed to authenticate"
+            msg = auth_error[0] or tr("connect.failed_auth", "Failed to authenticate")
             self._progress.clear_stages()
             self._progress.add_stage(msg, "fail")
-            self._progress.add_stage("> Check connection details", "info")
-            self._connect_btn.setText("CONNECT")
+            self._progress.add_stage(tr("connect.check_details", "> Check connection details"), "info")
+            self._connect_btn.setText(tr("connect.connect_btn", "CONNECT"))
             self._connect_btn.setEnabled(True)
             self._cancel_btn.setVisible(False)
             self._connecting_api = None
@@ -245,6 +282,35 @@ class ConnectPanel(QWidget):
         self._connecting_api = None
         QTimer.singleShot(300, lambda: self._on_connected(api))
 
+    #  Language toggle on login screen
+
+    def _sync_lang_buttons(self):
+        t = TranslationManager.instance()
+        curr = t.current_language
+        self._lang_en.setChecked(curr == "en")
+        self._lang_zh.setChecked(curr == "zh_CN")
+
+    def _set_lang(self, code):
+        TranslationManager.instance().set_language(code)
+        self._sync_lang_buttons()
+        self._refresh_connect_panel()
+
+    def _refresh_connect_panel(self):
+        self._title.setText(tr("connect.title", "PANDRAGON"))
+        self._subtitle.setText(tr("connect.subtitle", "serexp . FGL"))
+        self._url.setPlaceholderText(tr("connect.url_placeholder", "WebSocket URL"))
+        self._username.setPlaceholderText(tr("connect.username_placeholder", "Username"))
+        self._token.setPlaceholderText(tr("connect.token_placeholder", "Token (required)"))
+        self._token_toggle.setText(
+            tr("connect.token_hide", "HIDE")
+            if self._token.echoMode() == QLineEdit.EchoMode.Normal
+            else tr("connect.token_show", "SHOW")
+        )
+        self._skip_verify.setText(tr("connect.skip_ssl", "Skip SSL verify"))
+        self._remember.setText(tr("connect.remember", "Remember"))
+        self._connect_btn.setText(tr("connect.connect_btn", "CONNECT"))
+        self._cancel_btn.setText(tr("connect.cancel_btn", "CANCEL"))
+
 
 class MainWindow(QMainWindow):
     """Main application window with embedded connect panel and tabbed interface."""
@@ -255,6 +321,8 @@ class MainWindow(QMainWindow):
         self.api: PandragonAPI = None
         self._splash_done = False
         self._tabs = None
+        self._tab_labels = []
+        self._connected_state = (False, None)
 
         # Post-connect UI elements (created in _on_connected)
         self._status_bar_widgets = []
@@ -264,7 +332,7 @@ class MainWindow(QMainWindow):
         self._quip_label = None
         self._quip_idx = 0
 
-        self.setWindowTitle("Pandragon Operator Console")
+        self.setWindowTitle(tr("window.title", "Pandragon Operator Console"))
 
         self._stack = QStackedWidget()
 
@@ -289,7 +357,7 @@ class MainWindow(QMainWindow):
 
     def _cycle_quip(self):
         self._quip_idx = (self._quip_idx + 1) % len(_STATUS_QUIPS)
-        self._quip_label.setText(_STATUS_QUIPS[self._quip_idx])
+        self._quip_label.setText(tr(_STATUS_QUIP_KEYS[self._quip_idx], _STATUS_QUIPS[self._quip_idx]))
 
     def _disconnect(self):
         if self.api:
@@ -319,7 +387,7 @@ class MainWindow(QMainWindow):
         self._stack.insertWidget(1, self._connect_panel)
         self._stack.setCurrentIndex(1)
         self.resize(480, 400)
-        self.setWindowTitle("Pandragon Operator Console")
+        self.setWindowTitle(tr("window.title", "Pandragon Operator Console"))
 
     #  Splash / transitions 
 
@@ -386,24 +454,31 @@ class MainWindow(QMainWindow):
         beacon_split.addWidget(self.beacon_detail)
         beacon_split.setStretchFactor(0, 2)
         beacon_split.setStretchFactor(1, 1)
-        tabs.addTab(beacon_split, "Beacons")
 
         self.task_queue = TaskQueueWidget(api, self.beacon_table, self)
         self.beacon_table.task_queue = self.task_queue
-        tabs.addTab(self.task_queue, "Task Queue")
 
         self.graph_widget = BeaconGraphWidget(api, self)
-        tabs.addTab(self.graph_widget, "Pivot Graph")
 
         self.config_builder = ConfigBuilderWidget(self)
         self.config_builder.set_api(api)
-        tabs.addTab(self.config_builder, "Config Builder")
 
         self.bof_repo = BOFRepositoryWidget(api, self)
-        tabs.addTab(self.bof_repo, "BOF Repository")
 
         self.options_widget = OptionsWidget(self._disconnect, self.theme_mgr, self)
-        tabs.addTab(self.options_widget, "Options")
+
+        self._tab_labels = []  # (tr_key, default, index)
+        _tab_defs = [
+            (beacon_split,    "tab.beacons",        "Beacons"),
+            (self.task_queue, "tab.task_queue",     "Task Queue"),
+            (self.graph_widget, "tab.pivot_graph",  "Pivot Graph"),
+            (self.config_builder, "tab.config_builder", "Config Builder"),
+            (self.bof_repo, "tab.bof_repository",   "BOF Repository"),
+            (self.options_widget, "tab.options",    "Options"),
+        ]
+        for widget, key, default in _tab_defs:
+            idx = tabs.addTab(widget, tr(key, default))
+            self._tab_labels.append((key, default, idx))
 
         self._tab_layout.addWidget(tabs)
 
@@ -429,7 +504,7 @@ class MainWindow(QMainWindow):
         sb = self.statusBar()
 
         # Left side: status + operator (addWidget = left-aligned)
-        self._status_indicator = QLabel("[DISCONNECTED]")
+        self._status_indicator = QLabel(tr("window.status_disconnected", "[DISCONNECTED]"))
         self._status_indicator.setFont(_MONO_BOLD)
         self._status_indicator.setStyleSheet("color: #ffaa00;")
         sb.addWidget(self._status_indicator)
@@ -447,7 +522,7 @@ class MainWindow(QMainWindow):
         sb.addPermanentWidget(sep1)
         self._status_bar_widgets.append(sep1)
 
-        self._quip_label = QLabel(_STATUS_QUIPS[0])
+        self._quip_label = QLabel(tr(_STATUS_QUIP_KEYS[0], _STATUS_QUIPS[0]))
         self._quip_label.setFont(_MONO)
         self._quip_label.setStyleSheet("color: #555;")
         sb.addPermanentWidget(self._quip_label)
@@ -458,7 +533,7 @@ class MainWindow(QMainWindow):
         sb.addPermanentWidget(sep2)
         self._status_bar_widgets.append(sep2)
 
-        brand = QLabel("PANDRAGON . serexp / FGL")
+        brand = QLabel(tr("window.branding", "PANDRAGON . serexp / FGL"))
         brand.setFont(_MONO_BOLD)
         brand.setStyleSheet("color: #666;")
         sb.addPermanentWidget(brand)
@@ -488,47 +563,63 @@ class MainWindow(QMainWindow):
         self.api.connected.connect(
             lambda: (
                 self._set_connection_status(True),
-                self.notifications.success("Connected to teamserver", 3000),
+                self.notifications.success(tr("notification.connected", "Connected to teamserver"), 3000),
             )
         )
         self.api.disconnected.connect(
             lambda: (
                 self._set_connection_status(False),
-                self.notifications.warning("Disconnected from teamserver - reconnecting...", 0),
+                self.notifications.warning(tr("notification.disconnected", "Disconnected from teamserver - reconnecting..."), 0),
             )
         )
         self.api.connection_error.connect(
             lambda err: (
                 self._set_connection_status(False, err),
-                self.notifications.error(f"Connection error: {err}", 0),
+                self.notifications.error(tr("notification.connection_error", "Connection error: {error}", error=err), 0),
             )
         )
 
         self.api.operator_joined.connect(self._on_operator_joined)
         self.api.operator_left.connect(self._on_operator_left)
 
+        TranslationManager.instance().language_changed.connect(self._on_language_changed)
+
+    def _on_language_changed(self):
+        t = TranslationManager.instance()
+        save_state({"last_language": t.current_language})
+
+        # Update tab labels
+        tabs = self._tabs
+        if tabs:
+            for key, default, idx in self._tab_labels:
+                tabs.setTabText(idx, tr(key, default))
+
+        # Refresh window title and status indicator
+        self._set_connection_status(*self._connected_state if hasattr(self, '_connected_state') else (False, None))
+
     def _set_connection_status(self, connected, error=None):
+        self._connected_state = (connected, error)
         if connected:
-            self._status_indicator.setText("[CONNECTED]")
+            self._status_indicator.setText(tr("window.status_connected", "[CONNECTED]"))
             self._status_indicator.setStyleSheet("color: #8f8;")
-            self.setWindowTitle("Pandragon Operator Console [CONNECTED]")
+            self.setWindowTitle(tr("window.title_connected", "Pandragon Operator Console [CONNECTED]"))
         elif error:
-            self._status_indicator.setText("[ERROR]")
+            self._status_indicator.setText(tr("window.status_error", "[ERROR]"))
             self._status_indicator.setStyleSheet("color: #f44;")
-            self.setWindowTitle("Pandragon Operator Console [ERROR]")
+            self.setWindowTitle(tr("window.title_error", "Pandragon Operator Console [ERROR]"))
         else:
-            self._status_indicator.setText("[DISCONNECTED]")
+            self._status_indicator.setText(tr("window.status_disconnected", "[DISCONNECTED]"))
             self._status_indicator.setStyleSheet("color: #fa0;")
-            self.setWindowTitle("Pandragon Operator Console [DISCONNECTED]")
+            self.setWindowTitle(tr("window.title_disconnected", "Pandragon Operator Console [DISCONNECTED]"))
 
     def _on_operator_joined(self, username):
-        self._operator_label.setText(f"  {username} joined")
-        self.notifications.info(f"Operator joined: {username}", 5000)
+        self._operator_label.setText(tr("status.operator_joined", "  {username} joined", username=username))
+        self.notifications.info(tr("notification.operator_joined", "Operator joined: {username}", username=username), 5000)
         QTimer.singleShot(5000, lambda: self._operator_label.setText(""))
 
     def _on_operator_left(self, username):
-        self._operator_label.setText(f"  {username} left")
-        self.notifications.info(f"Operator left: {username}", 5000)
+        self._operator_label.setText(tr("status.operator_left", "  {username} left", username=username))
+        self.notifications.info(tr("notification.operator_left", "Operator left: {username}", username=username), 5000)
         QTimer.singleShot(5000, lambda: self._operator_label.setText(""))
 
     def _on_beacon_activity(self, bid, data):
@@ -550,11 +641,17 @@ def main(accept_responsibility=False):
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
 
+    # Initialize translations
+    saved_state = load_state()
+    tmanager = TranslationManager.instance()
+    lang = saved_state.get("last_language", "en")
+    tmanager.load(lang)
+
     if not accept_responsibility:
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Icon.Warning)
-        msg.setWindowTitle("Authorized Use Only")
-        msg.setText(
+        msg.setWindowTitle(tr("eula.title", "Authorized Use Only"))
+        msg.setText(tr("eula.message",
             "Pandragon — Authorized Use Only\n\n"
             "This framework is intended exclusively for:\n"
             "  \u2022  Authorized penetration testing with written permission\n"
@@ -567,11 +664,11 @@ def main(accept_responsibility=False):
             "targets without written authorization is strictly forbidden.\n"
             "The authors disclaim all liability for misuse.\n\n"
             "Do no evil."
-        )
+        ))
         msg.setStandardButtons(QMessageBox.StandardButton.Yes |
                                QMessageBox.StandardButton.No)
-        msg.button(QMessageBox.StandardButton.Yes).setText("I Agree")
-        msg.button(QMessageBox.StandardButton.No).setText("I Decline")
+        msg.button(QMessageBox.StandardButton.Yes).setText(tr("eula.agree", "I Agree"))
+        msg.button(QMessageBox.StandardButton.No).setText(tr("eula.decline", "I Decline"))
         if msg.exec() != QMessageBox.StandardButton.Yes:
             sys.exit(0)
 

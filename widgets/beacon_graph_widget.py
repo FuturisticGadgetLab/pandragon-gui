@@ -20,6 +20,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QPointF, QLineF, QRectF
 from PyQt6.QtGui import QFont, QColor, QPen, QBrush, QPainter, QImage
 from PyQt6.QtGui import QPolygonF
 
+from gui.translations.manager import tr
 from gui.widgets.notification_overlay import NotificationOverlay
 
 class BeaconGraphWidget(QWidget):
@@ -51,7 +52,7 @@ class BeaconGraphWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
 
         # Title
-        title = QLabel("Beacon Topology")
+        title = QLabel(tr("graph.title", "Beacon Topology"))
         title.setFont(QFont("Consolas", 13, QFont.Weight.Bold))
         layout.addWidget(title)
 
@@ -59,22 +60,22 @@ class BeaconGraphWidget(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(6)
 
-        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn = QPushButton(tr("graph.refresh", "Refresh"))
         self.refresh_btn.setFixedWidth(90)
         self.refresh_btn.clicked.connect(self.refresh)
         btn_layout.addWidget(self.refresh_btn)
 
-        self.layout_btn = QPushButton("Layout")
+        self.layout_btn = QPushButton(tr("graph.layout", "Layout"))
         self.layout_btn.setFixedWidth(90)
         self.layout_btn.clicked.connect(self._auto_layout)
         btn_layout.addWidget(self.layout_btn)
 
-        self.fit_btn = QPushButton("Fit")
+        self.fit_btn = QPushButton(tr("graph.fit", "Fit"))
         self.fit_btn.setFixedWidth(70)
         self.fit_btn.clicked.connect(self._fit_view)
         btn_layout.addWidget(self.fit_btn)
 
-        self.export_btn = QPushButton("Export")
+        self.export_btn = QPushButton(tr("graph.export", "Export"))
         self.export_btn.setFixedWidth(80)
         self.export_btn.clicked.connect(self._export_image)
         btn_layout.addWidget(self.export_btn)
@@ -92,7 +93,7 @@ class BeaconGraphWidget(QWidget):
         layout.addWidget(self.view)
 
         # Info panel - monospace, compact
-        info_group = QGroupBox("Node")
+        info_group = QGroupBox(tr("graph.node_info", "Node"))
         info_group.setFont(QFont("Consolas", 8))
         self.info_layout = QGridLayout()
         self.info_layout.setContentsMargins(6, 6, 6, 6)
@@ -107,9 +108,15 @@ class BeaconGraphWidget(QWidget):
         self.info_status = QLabel("-")
         self.info_status.setFont(QFont("Consolas", 9))
 
+        info_labels = {
+            "ID": "graph.info_id",
+            "Type": "graph.info_type",
+            "IP": "graph.info_ip",
+            "Status": "graph.info_status",
+        }
         for lbl, val in [("ID", self.info_beacon_id), ("Type", self.info_type),
                          ("IP", self.info_ip), ("Status", self.info_status)]:
-            k = QLabel(lbl)
+            k = QLabel(tr(info_labels[lbl], lbl))
             k.setFont(QFont("Consolas", 8))
             self.info_layout.addWidget(k, self.info_layout.rowCount(), 0)
             self.info_layout.addWidget(val, self.info_layout.rowCount() - 1, 1)
@@ -189,7 +196,7 @@ class BeaconGraphWidget(QWidget):
         from PyQt6.QtCore import QRectF
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export Graph", "beacon_topology.png", "PNG Files (*.png)"
+            self, tr("graph.export_dialog_title", "Export Graph"), "beacon_topology.png", tr("graph.export_filter", "PNG Files (*.png)")
         )
         if not file_path:
             return
@@ -204,7 +211,7 @@ class BeaconGraphWidget(QWidget):
         painter = QPainter(image)
         self.scene.render(painter)
         image.save(file_path)
-        QMessageBox.information(self, "Export Complete", f"Graph saved to {file_path}")
+        QMessageBox.information(self, tr("graph.export_complete_title", "Export Complete"), tr("graph.export_complete", "Graph saved to {path}", path=file_path))
 
     def _on_node_double_clicked(self, node_id: str, node_data: dict):
         """Handle double-click on node to open beacon detail."""
@@ -345,7 +352,7 @@ class BeaconGraphWidget(QWidget):
     def clear_all(self):
         """Clear all nodes and edges."""
         reply = QMessageBox.question(
-            self, "Confirm Clear", "Clear all nodes and links?",
+            self, tr("graph.confirm_clear_title", "Confirm Clear"), tr("graph.confirm_clear", "Clear all nodes and links?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -362,17 +369,17 @@ class BeaconGraphWidget(QWidget):
                 pos = item.pos()
                 self.nodes[node_id]['x'] = pos.x()
                 self.nodes[node_id]['y'] = pos.y()
-        QMessageBox.information(self, "Layout Saved", "Layout saved locally.")
+        QMessageBox.information(self, tr("graph.layout_saved_title", "Layout Saved"), tr("graph.layout_saved", "Layout saved locally."))
         self.graph_updated.emit()
 
     def set_node_info(self, node_id, node_data):
         """Update node information display."""
         display_id = node_id[:16] if len(node_id) > 16 else node_id
         self.info_beacon_id.setText(display_id)
-        self.info_type.setText(node_data.get('transport', 'unknown'))
+        self.info_type.setText(node_data.get('transport', tr("graph.unknown", "unknown")))
         metadata = node_data.get('metadata', {}) or {}
         self.info_ip.setText(metadata.get('ip', node_data.get('internal_ips', '-') if isinstance(node_data.get('internal_ips'), str) else '-'))
-        status = "Alive" if node_data.get('is_alive', True) else "Offline"
+        status = tr("graph.alive", "Alive") if node_data.get('is_alive', True) else tr("graph.offline", "Offline")
         self.info_status.setText(status)
 
 
@@ -381,17 +388,17 @@ class EnableRelayDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Enable P2P Relay")
+        self.setWindowTitle(tr("graph.enable_relay_title", "Enable P2P Relay"))
         self.setMinimumWidth(350)
 
         layout = QFormLayout()
         layout.setSpacing(8)
 
-        self.pipe_prefix_edit = QLineEdit("msagent")
-        self.pipe_prefix_edit.setPlaceholderText("msagent")
-        layout.addRow("Pipe Prefix:", self.pipe_prefix_edit)
+        self.pipe_prefix_edit = QLineEdit(tr("graph.placeholder_pipe_prefix", "msagent"))
+        self.pipe_prefix_edit.setPlaceholderText(tr("graph.placeholder_pipe_prefix", "msagent"))
+        layout.addRow(tr("graph.pipe_prefix", "Pipe Prefix:"), self.pipe_prefix_edit)
 
-        info = QLabel("Pipe will be: {prefix}_{random_hex}")
+        info = QLabel(tr("graph.pipe_format", "Pipe will be: {{prefix}}_{{random_hex}}"))
         info.setFont(QFont("Consolas", 8))
         info.setStyleSheet("color: #888;")
         layout.addRow(info)
@@ -414,21 +421,21 @@ class AddChildDialog(QDialog):
 
     def __init__(self, node_ids, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Child to Relay")
+        self.setWindowTitle(tr("graph.add_child_title", "Add Child to Relay"))
         self.setMinimumWidth(350)
 
         layout = QFormLayout()
         layout.setSpacing(8)
 
         self.child_combo = QComboBox()
-        self.child_combo.addItems(["- select -"] + node_ids)
-        layout.addRow("Child Beacon:", self.child_combo)
+        self.child_combo.addItems([tr("graph.select_placeholder", "- select -")] + node_ids)
+        layout.addRow(tr("graph.child_beacon", "Child Beacon:"), self.child_combo)
 
         self.pipe_name_edit = QLineEdit()
-        self.pipe_name_edit.setPlaceholderText("auto")
-        layout.addRow("Pipe Name:", self.pipe_name_edit)
+        self.pipe_name_edit.setPlaceholderText(tr("graph.placeholder_pipe_name", "auto"))
+        layout.addRow(tr("graph.pipe_name", "Pipe Name:"), self.pipe_name_edit)
 
-        info = QLabel("Child connects to this node via named pipe")
+        info = QLabel(tr("graph.child_info", "Child connects to this node via named pipe"))
         info.setFont(QFont("Consolas", 8))
         info.setStyleSheet("color: #888;")
         layout.addRow(info)
@@ -442,9 +449,9 @@ class AddChildDialog(QDialog):
 
         self.setLayout(layout)
 
-    def get_child_id(self) -> str:
-        text = self.child_combo.currentText()
-        return "" if text == "- select -" else text
+        def get_child_id(self) -> str:
+            text = self.child_combo.currentText()
+            return "" if text == tr("graph.select_placeholder", "- select -") else text
 
     def get_pipe_name(self) -> str:
         return self.pipe_name_edit.text().strip()
@@ -565,7 +572,7 @@ class NodeGraphicsItem(QGraphicsObject):
         menu = QMenu()
         menu.setFont(QFont("Consolas", 9))
 
-        edit_action = menu.addAction("Edit")
+        edit_action = menu.addAction(tr("graph.context_edit", "Edit"))
         edit_action.triggered.connect(lambda: self.edit_node())
 
         menu.addSeparator()
@@ -574,19 +581,19 @@ class NodeGraphicsItem(QGraphicsObject):
         transport = self.node_data.get('transport', 'direct')
         is_alive = self.node_data.get('is_alive', True)
 
-        enable_action = menu.addAction("Enable Relay")
+        enable_action = menu.addAction(tr("graph.context_enable_relay", "Enable Relay"))
         enable_action.setEnabled(transport == 'direct' and is_alive)
         enable_action.triggered.connect(lambda: self.enable_relay())
 
-        disable_action = menu.addAction("Disable Relay")
+        disable_action = menu.addAction(tr("graph.context_disable_relay", "Disable Relay"))
         disable_action.setEnabled(transport == 'relay')
         disable_action.triggered.connect(lambda: self.disable_relay())
 
-        add_child_action = menu.addAction("Add Child")
+        add_child_action = menu.addAction(tr("graph.context_add_child", "Add Child"))
         add_child_action.setEnabled(transport == 'relay')
         add_child_action.triggered.connect(lambda: self.add_child())
 
-        remove_child_action = menu.addAction("Remove from Parent")
+        remove_child_action = menu.addAction(tr("graph.context_remove_from_parent", "Remove from Parent"))
         remove_child_action.setEnabled(transport == 'relay')
         remove_child_action.triggered.connect(lambda: self.remove_child())
 
@@ -601,12 +608,12 @@ class NodeGraphicsItem(QGraphicsObject):
                 # Refresh from server to reflect actual state
                 self.parent_widget.refresh()
             except Exception as e:
-                QMessageBox.critical(self.parent_widget, "Error", f"Failed to enable relay: {e}")
+                QMessageBox.critical(self.parent_widget, tr("graph.error_title", "Error"), tr("graph.failed_enable_relay", "Failed to enable relay: {error}", error=e))
 
     def disable_relay(self):
         reply = QMessageBox.question(
-            self.parent_widget, "Disable Relay",
-            f"Disable relay on beacon {self.node_id[:8]}?\nThis will drain all children.",
+            self.parent_widget, tr("graph.disable_relay_title", "Disable Relay"),
+            tr("graph.disable_relay_confirm", "Disable relay on beacon {beacon}?\nThis will drain all children.", beacon=self.node_id[:8]),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -614,7 +621,7 @@ class NodeGraphicsItem(QGraphicsObject):
                 self.parent_widget.api.relay_disable(self.node_id)
                 self.parent_widget.refresh()
             except Exception as e:
-                QMessageBox.critical(self.parent_widget, "Error", f"Failed to disable relay: {e}")
+                QMessageBox.critical(self.parent_widget, tr("graph.error_title", "Error"), tr("graph.failed_disable_relay", "Failed to disable relay: {error}", error=e))
 
     def add_child(self):
         dialog = AddChildDialog(list(self.parent_widget.nodes.keys()), self.parent_widget)
@@ -622,13 +629,13 @@ class NodeGraphicsItem(QGraphicsObject):
             child_id = dialog.get_child_id()
             pipe_name = dialog.get_pipe_name()
             if not child_id:
-                QMessageBox.warning(self.parent_widget, "Invalid", "Child ID required")
+                QMessageBox.warning(self.parent_widget, tr("graph.invalid_title", "Invalid"), tr("graph.child_id_required", "Child ID required"))
                 return
             try:
                 self.parent_widget.api.relay_add_child(self.node_id, child_id, pipe_name)
                 self.parent_widget.refresh()
             except Exception as e:
-                QMessageBox.critical(self.parent_widget, "Error", f"Failed to add child: {e}")
+                QMessageBox.critical(self.parent_widget, tr("graph.error_title", "Error"), tr("graph.failed_add_child", "Failed to add child: {error}", error=e))
 
     def remove_child(self):
         # Find parent via edge data
@@ -638,11 +645,11 @@ class NodeGraphicsItem(QGraphicsObject):
                 parent_id = e.get('from')
                 break
         if not parent_id:
-            QMessageBox.warning(self.parent_widget, "No Parent", "No parent beacon found")
+            QMessageBox.warning(self.parent_widget, tr("graph.no_parent_title", "No Parent"), tr("graph.no_parent", "No parent beacon found"))
             return
         reply = QMessageBox.question(
-            self.parent_widget, "Remove Child",
-            f"Remove this beacon from parent {parent_id[:8]}?",
+            self.parent_widget, tr("graph.remove_child_title", "Remove Child"),
+            tr("graph.remove_child_confirm", "Remove this beacon from parent {parent}?", parent=parent_id[:8]),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -650,7 +657,7 @@ class NodeGraphicsItem(QGraphicsObject):
                 self.parent_widget.api.relay_remove_child(parent_id, self.node_id)
                 self.parent_widget.refresh()
             except Exception as e:
-                QMessageBox.critical(self.parent_widget, "Error", f"Failed to remove child: {e}")
+                QMessageBox.critical(self.parent_widget, tr("graph.error_title", "Error"), tr("graph.failed_remove_child", "Failed to remove child: {error}", error=e))
 
     def edit_node(self):
         """Edit node properties."""
@@ -741,25 +748,25 @@ class AddNodeDialog(QDialog):
     """Dialog for adding a new node."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Beacon Node")
+        self.setWindowTitle(tr("graph.add_node_title", "Add Beacon Node"))
         self.setMinimumWidth(400)
         layout = QFormLayout()
 
         self.beacon_id_edit = QLineEdit()
-        self.beacon_id_edit.setPlaceholderText("e.g., abcdef1234567890")
-        layout.addRow("Beacon ID:", self.beacon_id_edit)
+        self.beacon_id_edit.setPlaceholderText(tr("graph.add_node_id_placeholder", "e.g., abcdef1234567890"))
+        layout.addRow(tr("graph.add_node_beacon_id", "Beacon ID:"), self.beacon_id_edit)
 
         self.type_combo = QComboBox()
-        self.type_combo.addItems(["direct", "relay"])
-        layout.addRow("Type:", self.type_combo)
+        self.type_combo.addItems([tr("graph.node_type_direct", "direct"), tr("graph.node_type_relay", "relay")])
+        layout.addRow(tr("graph.add_node_type", "Type:"), self.type_combo)
 
         self.ip_edit = QLineEdit()
-        self.ip_edit.setPlaceholderText("192.168.1.100")
-        layout.addRow("IP Address:", self.ip_edit)
+        self.ip_edit.setPlaceholderText(tr("graph.placeholder_ip", "192.168.1.100"))
+        layout.addRow(tr("graph.add_node_ip", "IP Address:"), self.ip_edit)
 
         self.os_edit = QLineEdit()
-        self.os_edit.setPlaceholderText("Windows 10 Pro")
-        layout.addRow("OS:", self.os_edit)
+        self.os_edit.setPlaceholderText(tr("graph.placeholder_os", "Windows 10 Pro"))
+        layout.addRow(tr("graph.add_node_os", "OS:"), self.os_edit)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok |
@@ -787,21 +794,21 @@ class AddEdgeDialog(QDialog):
     """Dialog for adding a new edge."""
     def __init__(self, nodes, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Link")
+        self.setWindowTitle(tr("graph.add_edge_title", "Add Link"))
         self.setMinimumWidth(400)
         layout = QFormLayout()
 
         self.from_combo = QComboBox()
         self.from_combo.addItems(nodes)
-        layout.addRow("From Node:", self.from_combo)
+        layout.addRow(tr("graph.add_edge_from", "From Node:"), self.from_combo)
 
         self.to_combo = QComboBox()
         self.to_combo.addItems(nodes)
-        layout.addRow("To Node:", self.to_combo)
+        layout.addRow(tr("graph.add_edge_to", "To Node:"), self.to_combo)
 
         self.pipe_id_edit = QLineEdit()
         self.pipe_id_edit.setPlaceholderText("1")
-        layout.addRow("Pipe ID:", self.pipe_id_edit)
+        layout.addRow(tr("graph.add_edge_pipe_id", "Pipe ID:"), self.pipe_id_edit)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok |
@@ -826,16 +833,16 @@ class EditNodeDialog(QDialog):
     """Dialog for editing node properties."""
     def __init__(self, node_id, node_data, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Edit Node: {node_id[:8]}")
+        self.setWindowTitle(tr("graph.edit_node_title", "Edit Node: {node_id}", node_id=node_id[:8]))
         self.setMinimumWidth(400)
         layout = QFormLayout()
 
         metadata = node_data.get('metadata', {})
         self.ip_edit = QLineEdit(metadata.get('ip', ''))
-        layout.addRow("IP Address:", self.ip_edit)
+        layout.addRow(tr("graph.add_node_ip", "IP Address:"), self.ip_edit)
 
         self.os_edit = QLineEdit(metadata.get('os', ''))
-        layout.addRow("OS:", self.os_edit)
+        layout.addRow(tr("graph.add_node_os", "OS:"), self.os_edit)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok |

@@ -10,15 +10,30 @@ from typing import Optional
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 )
+from gui.translations.manager import tr
 
 
-_STAGE_LABELS = {
-    "ok":    "[ OK ]",
-    "fail":  "[FAIL]",
-    "info":  "[INFO]",
-    "busy":  "[ .. ]",
-    "skip":  "[SKIP]",
+_STAGE_LABEL_KEYS = {
+    "ok":   "splash.stage_ok",
+    "fail": "splash.stage_fail",
+    "info": "splash.stage_info",
+    "busy": "splash.stage_busy",
+    "skip": "splash.stage_skip",
 }
+
+_STAGE_LABEL_DEFAULTS = {
+    "ok":   "[ OK ]",
+    "fail": "[FAIL]",
+    "info": "[INFO]",
+    "busy": "[ .. ]",
+    "skip": "[SKIP]",
+}
+
+
+def _stage_label(icon_key: str) -> str:
+    key = _STAGE_LABEL_KEYS.get(icon_key, "splash.stage_busy")
+    default = _STAGE_LABEL_DEFAULTS.get(icon_key, "[ .. ]")
+    return tr(key, default)
 
 
 class _StageLine(QWidget):
@@ -29,7 +44,7 @@ class _StageLine(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self._icon = QLabel(_STAGE_LABELS.get(icon_key, _STAGE_LABELS["busy"]))
+        self._icon = QLabel(_stage_label(icon_key))
         self._icon.setObjectName(f"stageIcon_{icon_key}")
         layout.addWidget(self._icon)
 
@@ -39,7 +54,7 @@ class _StageLine(QWidget):
         layout.addStretch()
 
     def set_icon(self, icon_key: str):
-        self._icon.setText(_STAGE_LABELS.get(icon_key, _STAGE_LABELS["busy"]))
+        self._icon.setText(_stage_label(icon_key))
         self._icon.setObjectName(f"stageIcon_{icon_key}")
         # force style re-apply
         self._icon.style().unpolish(self._icon)

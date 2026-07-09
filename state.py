@@ -15,6 +15,7 @@ _DEFAULT = {
     "last_url": "wss://127.0.0.1:6767/ws",
     "last_username": "operator",
     "last_token": "",
+    "last_language": "en",
 }
 
 

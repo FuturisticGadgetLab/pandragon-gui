@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QMouseEvent
+from gui.translations.manager import tr
 
 
 class StartSplash(QWidget):
@@ -17,8 +18,9 @@ class StartSplash(QWidget):
         layout.setSpacing(12)
 
         label = QLabel(
-            '\u201cThe bird of Hermes is my Name,\n'
-            'eat my Wings to make me tame\u201d'
+            tr("splash.hermes_quote",
+               '\u201cThe bird of Hermes is my Name,\n'
+               'eat my Wings to make me tame\u201d')
         )
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         f = QFont("Georgia", 14)
@@ -29,7 +31,7 @@ class StartSplash(QWidget):
         )
         layout.addWidget(label)
 
-        sub = QLabel("Pandragon")
+        sub = QLabel(tr("splash.app_name", "Pandragon"))
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sf = QFont("Georgia", 10)
         sf.setStyleHint(QFont.StyleHint.Serif)
@@ -37,7 +39,7 @@ class StartSplash(QWidget):
         sub.setStyleSheet("color: #605040; background: transparent;")
         layout.addWidget(sub)
 
-        credit = QLabel("a serexp / FGL production")
+        credit = QLabel(tr("splash.credit", "a serexp / FGL production"))
         credit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cf = QFont("Georgia", 7)
         cf.setStyleHint(QFont.StyleHint.Serif)

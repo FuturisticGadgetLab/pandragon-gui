@@ -20,6 +20,7 @@ from PyQt6.QtCore import (
 from PyQt6.QtGui import QColor, QAction, QKeySequence
 
 from gui.api_client import PandragonAPI
+from gui.translations.manager import tr
 from gui.dialogs.action_dialogs import (
     BOFExecDialog, ExecutePEDialog, InjectProcessDialog,
     ListFilesDialog, SleepDialog,
@@ -40,12 +41,25 @@ COLUMNS = [
     ("Key Rotation", 0),
 ]
 
+_COLUMN_KEYS = [
+    "beacon_table.column_name",
+    "beacon_table.column_beacon_id",
+    "beacon_table.column_status",
+    "beacon_table.column_last_seen",
+    "beacon_table.column_auth",
+    "beacon_table.column_queued",
+    "beacon_table.column_scheduled",
+    "beacon_table.column_pending",
+    "beacon_table.column_output",
+    "beacon_table.column_key_rotation",
+]
+
 # Status badge symbols and colors
 _STATUS_BADGES = {
-    "active":  ("\u25CF Active",   QColor("#00ff00")),
-    "idle":    ("\u25CF Idle",     QColor("#ffaa00")),
-    "dead":    ("\u25CF Dead",     QColor("#ff4444")),
-    "removed": ("\u25CF Removed",  QColor("#ff4444")),
+    "active":  (tr("beacon_table.status_active", "\u25CF Active"),   QColor("#00ff00")),
+    "idle":    (tr("beacon_table.status_idle", "\u25CF Idle"),       QColor("#ffaa00")),
+    "dead":    (tr("beacon_table.status_dead", "\u25CF Dead"),       QColor("#ff4444")),
+    "removed": (tr("beacon_table.status_removed", "\u25CF Removed"), QColor("#ff4444")),
 }
 
 
@@ -84,6 +98,9 @@ class _BeaconTableModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+            key = _COLUMN_KEYS[section] if section < len(_COLUMN_KEYS) else None
+            if key:
+                return tr(key, COLUMNS[section][0])
             return COLUMNS[section][0]
         return None
 
@@ -176,9 +193,9 @@ class _BeaconTableModel(QAbstractTableModel):
             badge = _STATUS_BADGES.get(b['status'])
             return badge[0] if badge else b['status']
         if col == 3:
-            return f"{b.get('last_seen_ago', 0)}s ago"
+            return tr("beacon_table.last_seen_fmt", "{seconds}s ago", seconds=b.get('last_seen_ago', 0))
         if col == 4:
-            return "Yes" if b['authenticated'] else "No"
+            return tr("beacon_table.yes", "Yes") if b['authenticated'] else tr("beacon_table.no", "No")
         if col == 5:
             return str(b['queued_tasks_internal'])
         if col == 6:
@@ -188,7 +205,7 @@ class _BeaconTableModel(QAbstractTableModel):
         if col == 8:
             return str(b['output_count'])
         if col == 9:
-            return "Pending" if b['key_rotation_pending'] else "No"
+            return tr("beacon_table.pending", "Pending") if b['key_rotation_pending'] else tr("beacon_table.no", "No")
         return ""
 
     @staticmethod
@@ -253,11 +270,11 @@ class BeaconTableWidget(QWidget):
         toolbar = QHBoxLayout()
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Filter beacons\u2026")
+        self.search_input.setPlaceholderText(tr("beacon_table.filter_placeholder", "Filter beacons\u2026"))
         self.search_input.textChanged.connect(self._on_filter_changed)
         toolbar.addWidget(self.search_input)
 
-        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn = QPushButton(tr("beacon_table.refresh_btn", "Refresh"))
         self.refresh_btn.clicked.connect(self.refresh)
         toolbar.addWidget(self.refresh_btn)
 
@@ -319,7 +336,7 @@ class BeaconTableWidget(QWidget):
                     self.beacon_selected.emit(None)
         except Exception as e:
             if self._notifications:
-                self._notifications.warning(f"Beacon refresh failed: {e}", 5000)
+                self._notifications.warning(tr("notification.beacon_refresh_failed", "Beacon refresh failed: {error}", error=e), 5000)
 
     def get_selected_beacon_id(self) -> Optional[str]:
         if self.selected_beacon_id:
@@ -376,11 +393,11 @@ class BeaconTableWidget(QWidget):
     def remove_beacon(self):
         bids = self.get_selected_beacon_ids()
         if not bids:
-            QMessageBox.warning(self, "Warning", "No beacon selected")
+            QMessageBox.warning(self, tr("beacon_table.warning_title", "Warning"), tr("beacon_table.no_beacon_selected", "No beacon selected"))
             return
-        label = bids[0][:16] if len(bids) == 1 else f"{len(bids)} beacons"
+        label = bids[0][:16] if len(bids) == 1 else tr("beacon_table.label_beacons", "{count} beacons", count=len(bids))
         reply = QMessageBox.question(
-            self, "Confirm", f"Remove {label}?",
+            self, tr("beacon_table.confirm_remove_title", "Confirm"), tr("beacon_table.confirm_remove", "Remove {label}?", label=label),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -389,48 +406,48 @@ class BeaconTableWidget(QWidget):
             try:
                 self.api.remove_beacon(bid)
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, tr("beacon_table.error_title", "Error"), str(e))
         self.refresh()
 
     def rotate_key(self):
         bids = self.get_selected_beacon_ids()
         if not bids:
-            QMessageBox.warning(self, "Warning", "No beacon selected")
+            QMessageBox.warning(self, tr("beacon_table.warning_title", "Warning"), tr("beacon_table.no_beacon_selected", "No beacon selected"))
             return
         for bid in bids:
             try:
                 self.api.rotate_key(bid)
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, tr("beacon_table.error_title", "Error"), str(e))
         self.refresh()
 
     def rename_beacon(self):
         bids = self.get_selected_beacon_ids()
         if not bids:
-            QMessageBox.warning(self, "Warning", "No beacon selected")
+            QMessageBox.warning(self, tr("beacon_table.warning_title", "Warning"), tr("beacon_table.no_beacon_selected", "No beacon selected"))
             return
         bid = bids[0]
         from PyQt6.QtWidgets import QInputDialog
         name, ok = QInputDialog.getText(
-            self, "Rename Beacon",
-            f"New name for {bid[:16]}:",
+            self, tr("beacon_table.rename_title", "Rename Beacon"),
+            tr("beacon_table.rename_prompt", "New name for {id}:", id=bid[:16]),
         )
         if not ok:
             return
         try:
             self.api.rename_beacon(bid, name.strip())
             if self._notifications:
-                self._notifications.success(f"Beacon renamed to {name.strip()}", 3000)
+                self._notifications.success(tr("notification.beacon_renamed", "Beacon renamed to {name}", name=name.strip()), 3000)
             self.refresh()
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            QMessageBox.critical(self, tr("beacon_table.error_title", "Error"), str(e))
 
     def queue_etw(self, enable: bool):
         bids = self.get_selected_beacon_ids()
         if not bids:
             return
         opcode = 0x25 if enable else 0x26
-        desc = "etw: enable" if enable else "etw: disable"
+        desc = tr("beacon_table.description_etw_enable", "etw: enable") if enable else tr("beacon_table.description_etw_disable", "etw: disable")
         payload = base64.b64encode(b"").decode()
         for bid in bids:
             if self.task_queue:
@@ -444,9 +461,9 @@ class BeaconTableWidget(QWidget):
         bids = self.get_selected_beacon_ids()
         if not bids:
             return
-        label = bids[0][:16] if len(bids) == 1 else f"{len(bids)} beacons"
+        label = bids[0][:16] if len(bids) == 1 else tr("beacon_table.label_beacons", "{count} beacons", count=len(bids))
         reply = QMessageBox.question(
-            self, "Confirm Exit", f"Terminate {label}?",
+            self, tr("beacon_table.confirm_exit_title", "Confirm Exit"), tr("beacon_table.confirm_exit", "Terminate {label}?", label=label),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -455,7 +472,7 @@ class BeaconTableWidget(QWidget):
             if self.task_queue:
                 self.task_queue.add_task(
                     beacon_id=bid, opcode=0xFF, payload="",
-                    description="exit beacon",
+                    description=tr("beacon_table.description_exit", "exit beacon"),
                 )
         self.refresh()
 
@@ -472,56 +489,56 @@ class BeaconTableWidget(QWidget):
 
     def _build_context_menu(self, menu: QMenu, beacon_id: str):
         #  Execution 
-        exec_m = menu.addMenu("Execution")
-        self._add_action(exec_m, "BOF Exec", "bof", beacon_id)
-        self._add_action(exec_m, "Execute PE...", "execute_pe", beacon_id)
+        exec_m = menu.addMenu(tr("beacon_table.context_execution", "Execution"))
+        self._add_action(exec_m, tr("beacon_table.context_bof_exec", "BOF Exec"), "bof", beacon_id)
+        self._add_action(exec_m, tr("beacon_table.context_execute_pe", "Execute PE..."), "execute_pe", beacon_id)
 
         menu.addSeparator()
 
         #  Inject 
-        inject = menu.addMenu("Inject")
-        self._add_action(inject, "Inject Process", "inject", beacon_id)
+        inject = menu.addMenu(tr("beacon_table.context_inject", "Inject"))
+        self._add_action(inject, tr("beacon_table.context_inject_process", "Inject Process"), "inject", beacon_id)
 
         menu.addSeparator()
 
         #  File Operations 
-        file_m = menu.addMenu("File Operations")
-        self._add_action(file_m, "List Files",    "list_files", beacon_id)
+        file_m = menu.addMenu(tr("beacon_table.context_file_ops", "File Operations"))
+        self._add_action(file_m, tr("beacon_table.context_list_files", "List Files"),    "list_files", beacon_id)
 
         menu.addSeparator()
 
         #  Beacon Control 
-        ctrl = menu.addMenu("Beacon Control")
+        ctrl = menu.addMenu(tr("beacon_table.context_beacon_ctrl", "Beacon Control"))
 
-        sleep_a = QAction("Sleep\u2026", self)
+        sleep_a = QAction(tr("beacon_table.context_sleep", "Sleep\u2026"), self)
         sleep_a.triggered.connect(lambda: self._open_dialog(SleepDialog, beacon_id, "sleep"))
         ctrl.addAction(sleep_a)
 
         ctrl.addSeparator()
-        etw_on = QAction("ETW Enable", self)
+        etw_on = QAction(tr("beacon_table.context_etw_enable", "ETW Enable"), self)
         etw_on.triggered.connect(lambda: self.queue_etw(True))
         ctrl.addAction(etw_on)
-        etw_off = QAction("ETW Disable", self)
+        etw_off = QAction(tr("beacon_table.context_etw_disable", "ETW Disable"), self)
         etw_off.triggered.connect(lambda: self.queue_etw(False))
         ctrl.addAction(etw_off)
 
         ctrl.addSeparator()
-        exit_a = QAction("Exit Beacon", self)
+        exit_a = QAction(tr("beacon_table.context_exit", "Exit Beacon"), self)
         exit_a.triggered.connect(lambda: self.queue_exit())
         ctrl.addAction(exit_a)
 
         ctrl.addSeparator()
 
-        rename_a = QAction("Rename Beacon\u2026", self)
+        rename_a = QAction(tr("beacon_table.context_rename", "Rename Beacon\u2026"), self)
         rename_a.triggered.connect(lambda: self.rename_beacon())
         ctrl.addAction(rename_a)
 
-        rotate_a = QAction("Rotate Key", self)
+        rotate_a = QAction(tr("beacon_table.context_rotate_key", "Rotate Key"), self)
         rotate_a.setShortcut(QKeySequence("Ctrl+R"))
         rotate_a.triggered.connect(lambda: self.rotate_key())
         ctrl.addAction(rotate_a)
 
-        remove_a = QAction("Remove Beacon", self)
+        remove_a = QAction(tr("beacon_table.context_remove", "Remove Beacon"), self)
         remove_a.setShortcut(QKeySequence.StandardKey.Delete)
         remove_a.triggered.connect(lambda: self.remove_beacon())
         ctrl.addAction(remove_a)
@@ -563,9 +580,8 @@ class BeaconTableWidget(QWidget):
         task = self._build_and_queue_task(beacon_id, action, dlg)
         if task:
             QMessageBox.information(
-                self, "Task Queued",
-                f"Task queued: {action} (ID: {task.id})\n"
-                "Will be submitted on next beacon check-in."
+                self, tr("beacon_table.task_queued_title", "Task Queued"),
+                tr("beacon_table.task_queued", "Task queued: {action} (ID: {task_id})\nWill be submitted on next beacon check-in.", action=action, task_id=task.id)
             )
             self.refresh()
 
@@ -587,19 +603,17 @@ class BeaconTableWidget(QWidget):
 
             if result.get('success'):
                 QMessageBox.information(
-                    self, "Execute PE",
-                    f"PE execution queued on server\n"
-                    f"File: {dlg.get_filename()}\n"
-                    f"Shellcode size: {result.get('shellcode_size', '?')} bytes\n"
-                    f"Task ID: {result.get('task_id', '?')}"
+                    self, tr("beacon_table.execute_pe_title", "Execute PE"),
+                    tr("beacon_table.execute_pe_queued", "PE execution queued on server\nFile: {file}\nShellcode size: {size} bytes\nTask ID: {task_id}",
+                       file=dlg.get_filename(), size=result.get('shellcode_size', '?'), task_id=result.get('task_id', '?'))
                 )
             else:
                 QMessageBox.critical(
-                    self, "Execute PE Failed",
-                    f"Server error: {result.get('error', 'Unknown error')}"
+                    self, tr("beacon_table.execute_pe_failed_title", "Execute PE Failed"),
+                    tr("beacon_table.execute_pe_failed", "Server error: {error}", error=result.get('error', 'Unknown error'))
                 )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to execute PE: {e}")
+            QMessageBox.critical(self, tr("beacon_table.error_title", "Error"), tr("beacon_table.failed_to_execute_pe", "Failed to execute PE: {error}", error=e))
 
     #  Task building 
 
@@ -607,7 +621,7 @@ class BeaconTableWidget(QWidget):
 
     def _build_and_queue_task(self, beacon_id: str, action: str, dlg):
         if not self.task_queue:
-            QMessageBox.warning(self, "Warning", "Task queue not initialized")
+            QMessageBox.warning(self, tr("beacon_table.warning_title", "Warning"), tr("beacon_table.task_queue_not_initialized", "Task queue not initialized"))
             return None
 
         payload, desc = self._build_payload(action, dlg)
@@ -628,20 +642,20 @@ class BeaconTableWidget(QWidget):
             bof_path = dlg.get_bof_path()
             args = dlg.get_arguments()
             text = f"{bof_path} {args}".strip()
-            return base64.b64encode(text.encode()).decode(), f"bof: {bof_path}"
+            return base64.b64encode(text.encode()).decode(), tr("beacon_table.description_bof", "bof: {path}", path=bof_path)
 
         if action == "inject":
             pid = dlg.get_pid()
             bof_path = dlg.get_bof_path()
             text = f"{pid} {bof_path}"
-            return base64.b64encode(text.encode()).decode(), f"inject: pid={pid}"
+            return base64.b64encode(text.encode()).decode(), tr("beacon_table.description_inject", "inject: pid={pid}", pid=pid)
 
         if action == "list_files":
             d = dlg.get_directory_path()
-            return base64.b64encode(d.encode()).decode(), f"list: {d}"
+            return base64.b64encode(d.encode()).decode(), tr("beacon_table.description_list", "list: {dir}", dir=d)
 
         if action == "sleep":
             sec = dlg.get_sleep_seconds()
-            return base64.b64encode(str(sec).encode()).decode(), f"sleep: {sec}s"
+            return base64.b64encode(str(sec).encode()).decode(), tr("beacon_table.description_sleep", "sleep: {seconds}s", seconds=sec)
 
         return None, ""

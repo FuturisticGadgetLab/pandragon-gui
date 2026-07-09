@@ -23,6 +23,7 @@ from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation
 from PyQt6.QtGui import QFont, QColor, QTextCursor
 
 from gui.api_client import PandragonAPI
+from gui.translations.manager import tr
 from gui.widgets.notification_overlay import NotificationOverlay
 
 
@@ -83,75 +84,101 @@ class BeaconDetailWidget(QWidget):
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Identity group
-        self._identity_group = self._make_group("Identity")
+        self._identity_group = self._make_group(tr("beacon_detail.group_identity", "Identity"))
         self._identity_form = QFormLayout()
         self._identity_form.setSpacing(4)
         self._identity_fields: dict[str, _InfoLabel] = {}
-        for label_text in ("Beacon ID", "Name", "Username", "Computer Name", "Domain"):
+        self._identity_labels = {
+            "Beacon ID": "beacon_detail.field_beacon_id",
+            "Name": "beacon_detail.field_name",
+            "Username": "beacon_detail.field_username",
+            "Computer Name": "beacon_detail.field_computer_name",
+            "Domain": "beacon_detail.field_domain",
+        }
+        for label_text, tr_key in self._identity_labels.items():
             lbl = _InfoLabel()
             self._identity_fields[label_text] = lbl
-            self._identity_form.addRow(label_text, lbl)
+            self._identity_form.addRow(tr(tr_key, label_text), lbl)
         self._identity_group.setLayout(self._identity_form)
         self._layout.addWidget(self._identity_group)
 
         # OS group
-        self._os_group = self._make_group("Operating System")
+        self._os_group = self._make_group(tr("beacon_detail.group_os", "Operating System"))
         self._os_form = QFormLayout()
         self._os_form.setSpacing(4)
         self._os_fields: dict[str, _InfoLabel] = {}
-        for label_text in ("OS Version", "Architecture", "WoW64", "Elevated", "Domain Joined"):
+        self._os_labels = {
+            "OS Version": "beacon_detail.field_os_version",
+            "Architecture": "beacon_detail.field_architecture",
+            "WoW64": "beacon_detail.field_wow64",
+            "Elevated": "beacon_detail.field_elevated",
+            "Domain Joined": "beacon_detail.field_domain_joined",
+        }
+        for label_text, tr_key in self._os_labels.items():
             lbl = _InfoLabel()
             self._os_fields[label_text] = lbl
-            self._os_form.addRow(label_text, lbl)
+            self._os_form.addRow(tr(tr_key, label_text), lbl)
         self._os_group.setLayout(self._os_form)
         self._layout.addWidget(self._os_group)
 
         # Process group
-        self._proc_group = self._make_group("Process")
+        self._proc_group = self._make_group(tr("beacon_detail.group_process", "Process"))
         self._proc_form = QFormLayout()
         self._proc_form.setSpacing(4)
         self._proc_fields: dict[str, _InfoLabel] = {}
-        for label_text in ("PID", "Process Name"):
+        self._proc_labels = {
+            "PID": "beacon_detail.field_pid",
+            "Process Name": "beacon_detail.field_process_name",
+        }
+        for label_text, tr_key in self._proc_labels.items():
             lbl = _InfoLabel()
             self._proc_fields[label_text] = lbl
-            self._proc_form.addRow(label_text, lbl)
+            self._proc_form.addRow(tr(tr_key, label_text), lbl)
         self._proc_group.setLayout(self._proc_form)
         self._layout.addWidget(self._proc_group)
 
         # Hardware group
-        self._hw_group = self._make_group("Hardware")
+        self._hw_group = self._make_group(tr("beacon_detail.group_hardware", "Hardware"))
         self._hw_form = QFormLayout()
         self._hw_form.setSpacing(4)
         self._hw_fields: dict[str, _InfoLabel] = {}
-        for label_text in ("RAM", "CPU Cores"):
+        self._hw_labels = {
+            "RAM": "beacon_detail.field_ram",
+            "CPU Cores": "beacon_detail.field_cpu_cores",
+        }
+        for label_text, tr_key in self._hw_labels.items():
             lbl = _InfoLabel()
             self._hw_fields[label_text] = lbl
-            self._hw_form.addRow(label_text, lbl)
+            self._hw_form.addRow(tr(tr_key, label_text), lbl)
         self._hw_group.setLayout(self._hw_form)
         self._layout.addWidget(self._hw_group)
 
         # Network group
-        self._net_group = self._make_group("Network")
+        self._net_group = self._make_group(tr("beacon_detail.group_network", "Network"))
         self._net_form = QFormLayout()
         self._net_form.setSpacing(4)
         self._net_fields: dict[str, _InfoLabel] = {}
         self._net_fields["Internal IPs"] = _InfoLabel()
-        self._net_form.addRow("Internal IPs", self._net_fields["Internal IPs"])
+        self._net_form.addRow(tr("beacon_detail.field_internal_ips", "Internal IPs"), self._net_fields["Internal IPs"])
         self._net_group.setLayout(self._net_form)
         self._layout.addWidget(self._net_group)
 
         # Async BOFs group (long-running BOFs)
-        self._async_bof_group = self._make_group("Async BOFs (Long-Running)")
+        self._async_bof_group = self._make_group(tr("beacon_detail.group_async_bofs", "Async BOFs (Long-Running)"))
         async_bof_layout = QVBoxLayout()
 
         # Controls: Refresh + Auto-refresh toggle
         async_bof_controls = QHBoxLayout()
-        self.async_bof_refresh_btn = QPushButton("Refresh")
+        self.async_bof_refresh_btn = QPushButton(tr("beacon_detail.async_bof_refresh", "Refresh"))
         self.async_bof_refresh_btn.clicked.connect(self.refresh_async_bofs)
         async_bof_controls.addWidget(self.async_bof_refresh_btn)
 
         self.async_bof_auto_cb = QComboBox()
-        self.async_bof_auto_cb.addItems(["Auto-refresh: Off", "Auto-refresh: 5s", "Auto-refresh: 10s"])
+        self.async_bof_auto_cb.addItems([
+            tr("beacon_detail.async_bof_auto_off", "Auto-refresh: Off"),
+            tr("beacon_detail.async_bof_auto_5s", "Auto-refresh: 5s"),
+            tr("beacon_detail.async_bof_auto_10s", "Auto-refresh: 10s"),
+        ])
         self.async_bof_auto_cb.setCurrentIndex(1)  # Default to 5s
         self.async_bof_auto_cb.currentIndexChanged.connect(self._on_async_bof_auto_changed)
         async_bof_controls.addWidget(self.async_bof_auto_cb)
@@ -162,7 +189,13 @@ class BeaconDetailWidget(QWidget):
         # Async BOFs table: Task ID | Name | Started | Last Output | Actions
         self.async_bof_table = QTableWidget()
         self.async_bof_table.setColumnCount(5)
-        self.async_bof_table.setHorizontalHeaderLabels(["Task ID", "Name", "Started", "Last Output", "Actions"])
+        self.async_bof_table.setHorizontalHeaderLabels([
+            tr("beacon_detail.async_bof_table_task_id", "Task ID"),
+            tr("beacon_detail.async_bof_table_name", "Name"),
+            tr("beacon_detail.async_bof_table_started", "Started"),
+            tr("beacon_detail.async_bof_table_last_output", "Last Output"),
+            tr("beacon_detail.async_bof_table_actions", "Actions"),
+        ])
         self.async_bof_table.setMaximumHeight(100)
         self.async_bof_table.setColumnWidth(0, 60)
         self.async_bof_table.setColumnWidth(1, 100)
@@ -191,22 +224,22 @@ class BeaconDetailWidget(QWidget):
 
         # Output controls row
         output_controls = QHBoxLayout()
-        self.output_refresh_btn = QPushButton("Refresh")
+        self.output_refresh_btn = QPushButton(tr("beacon_detail.output_refresh", "Refresh"))
         self.output_refresh_btn.clicked.connect(self.refresh_output)
         output_controls.addWidget(self.output_refresh_btn)
 
-        self.output_clear_btn = QPushButton("Clear")
+        self.output_clear_btn = QPushButton(tr("beacon_detail.output_clear", "Clear"))
         self.output_clear_btn.clicked.connect(lambda: self.output_text.clear())
         output_controls.addWidget(self.output_clear_btn)
 
-        self._auto_scroll_cb = QCheckBox("Auto-scroll")
+        self._auto_scroll_cb = QCheckBox(tr("beacon_detail.output_auto_scroll", "Auto-scroll"))
         self._auto_scroll_cb.setChecked(True)
         self._auto_scroll_cb.stateChanged.connect(
             lambda state: setattr(self, '_auto_scroll', state == Qt.CheckState.Checked.value)
         )
         output_controls.addWidget(self._auto_scroll_cb)
 
-        self.output_limit_label = QLabel("Limit:")
+        self.output_limit_label = QLabel(tr("beacon_detail.output_limit", "Limit:"))
         output_controls.addWidget(self.output_limit_label)
 
         self.output_limit_combo = QComboBox()
@@ -219,7 +252,7 @@ class BeaconDetailWidget(QWidget):
         # Output search bar
         search_row = QHBoxLayout()
         self.output_search = QLineEdit()
-        self.output_search.setPlaceholderText("Search output\u2026")
+        self.output_search.setPlaceholderText(tr("beacon_detail.output_search_placeholder", "Search output\u2026"))
         self.output_search.textChanged.connect(self._highlight_output)
         search_row.addWidget(self.output_search)
         self.output_match_label = QLabel("")
@@ -273,7 +306,7 @@ class BeaconDetailWidget(QWidget):
             logger.warning(f"Failed to get beacon detail: {e}")
             self._clear_fields()
             if self._notifications:
-                self._notifications.warning(f"Failed to load beacon detail: {e}", 4000)
+                self._notifications.warning(tr("beacon_detail.failed_load", "Failed to load beacon detail: {error}", error=e), 4000)
             return
 
         self._set_field(self._identity_fields, "Beacon ID", detail.get("beacon_id", "-"))
@@ -300,10 +333,10 @@ class BeaconDetailWidget(QWidget):
         # Color-coded elevation
         elevated = detail.get("is_elevated")
         if elevated:
-            self._os_fields["Elevated"].setText("Yes")
+            self._os_fields["Elevated"].setText(tr("beacon_detail.yes", "Yes"))
             self._os_fields["Elevated"].set_color("#00ff00")
         else:
-            self._os_fields["Elevated"].setText("No")
+            self._os_fields["Elevated"].setText(tr("beacon_detail.no", "No"))
             self._os_fields["Elevated"].set_color("#ff6666")
 
         pid = detail.get("pid")
@@ -377,7 +410,7 @@ class BeaconDetailWidget(QWidget):
                 last_ts = datetime.fromtimestamp(last_output).strftime("%H:%M:%S") if last_output else "-"
                 self.async_bof_table.setItem(i, 3, QTableWidgetItem(last_ts))
 
-                abort_btn = QPushButton("ABORT")
+                abort_btn = QPushButton(tr("beacon_detail.async_bof_abort", "ABORT"))
                 abort_btn.setObjectName("AbortBtn")
                 abort_btn.clicked.connect(lambda checked, tid=task_id: self._abort_async_bof(tid))
                 self.async_bof_table.setCellWidget(i, 4, abort_btn)
@@ -391,11 +424,11 @@ class BeaconDetailWidget(QWidget):
         try:
             result = self.api.abort_async_bof(self.current_beacon_id, task_id)
             if result.get("success"):
-                self.async_bof_status.setText(f"ABORT sent to task {task_id}")
+                self.async_bof_status.setText(tr("beacon_detail.async_bof_abort_sent", "ABORT sent to task {task_id}", task_id=task_id))
             # Refresh the list
             self.refresh_async_bofs()
         except Exception as e:
-            self.async_bof_status.setText(f"Error: {e}")
+            self.async_bof_status.setText(tr("beacon_detail.async_bof_abort_error", "Error: {error}", error=e))
 
     def _on_async_bof_auto_changed(self, index: int) -> None:
         """Handle auto-refresh dropdown change."""
@@ -493,7 +526,7 @@ class BeaconDetailWidget(QWidget):
             block = block.next()
 
         self.output_text.setExtraSelections(selections)
-        self.output_match_label.setText(f"{matches} match{'es' if matches != 1 else ''}")
+        self.output_match_label.setText(tr("beacon_detail.match_count", "{count} match", count=matches) if matches == 1 else tr("beacon_detail.match_count_plural", "{count} matches", count=matches))
 
     #  Internal helpers 
 
@@ -504,7 +537,7 @@ class BeaconDetailWidget(QWidget):
 
     @staticmethod
     def _bool(val) -> str:
-        return "Yes" if val else "No"
+        return tr("beacon_detail.yes", "Yes") if val else tr("beacon_detail.no", "No")
 
     def _set_field(self, group: dict[str, _InfoLabel], label: str, value: str) -> None:
         if label in group:
