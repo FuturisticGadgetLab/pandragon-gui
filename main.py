@@ -10,7 +10,7 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QLineEdit, QCheckBox, QPushButton,
-    QStackedWidget, QMessageBox,
+    QStackedWidget, QMessageBox, QFrame, QComboBox,
 )
 from PyQt6.QtCore import (
     Qt, QTimer, QPropertyAnimation, QEasingCurve, QParallelAnimationGroup,
@@ -38,6 +38,54 @@ _MONO_BOLD = QFont("Consolas", 10, QFont.Weight.Bold)
 _MONO_BOLD.setStyleHint(QFont.StyleHint.Monospace)
 _MONO_TITLE = QFont("Consolas", 18, QFont.Weight.Bold)
 _MONO_TITLE.setStyleHint(QFont.StyleHint.Monospace)
+
+_MONO_DRAGON = QFont("Consolas", 6)
+_MONO_DRAGON.setStyleHint(QFont.StyleHint.Monospace)
+
+_DRAGON_ART = r'''                                        ,   ,
+  P                                     $,  $,     ,
+                                        "ss.$ss. .s'
+    A                           ,     .ss$$$$$$$$$$s,
+                                $. s$$$$$$$$$$$$$$`$$Ss
+      N                         "$$$$$$$$$$$$$$$$$$o$$$       ,
+                               s$$$$$$$$$$$$$$$$$$$$$$$$s,  ,s
+         D                    s$$$$$$$$$"$$$$$$""""$$$$$$"$$$$$,
+                              s$$$$$$$$$$s""$$$$ssssss"$$$$$$$$"
+           R                 s$$$$$$$$$$'         `"""ss"$"$s""
+                             s$$$$$$$$$$,              `"""""$  .s$$s
+             A               s$$$$$$$$$$$$s,...               `s$$'  `
+                         `ssss$$$$$$$$$$$$$$$$$$$$####s.     .$$"$.   , s
+               G           `""""$$$$$$$$$$$$$$$$$$$$#####$$$$$$"     $.$'
+                                 "$$$$$$$$$$$$$$$$$$$$$####s""     .$$$|
+                 O                "$$$$$$$$$$$$$$$$$$$$$$$$##s    .$$" $
+                                   $$""$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+                    N             $$"  "$"$$$$$$$$$$$$$$$$$$$$S""""'
+                             ,   ,"     '  $$$$$$$$$$$$$$$$####s
+                             $.          .s$$$$$$$$$$$$$$$$$####"
+                 ,           "$s.   ..ssS$$$$$$$$$$$$$$$$$$$####"
+                 $           .$$$S$$$$$$$$$$$$$$$$$$$$$$$$#####"
+                 Ss     ..sS$$$$$$$$$$$$$$$$$$$$$$$$$$$######""
+                  "$$sS$$$$$$$$$$$$$$$$$$$$$$$$$$$########"
+           ,      s$$$$$$$$$$$$$$$$$$$$$$$$#########""'
+           $    s$$$$$$$$$$$$$$$$$$$$$#######""'      s'         ,
+           $$..$$$$$$$$$$$$$$$$$$######"'       ....,$$....    ,$
+            "$$$$$$$$$$$$$######"' ,     .sS$$$$$$$$$$$$$$$$s$$
+              $$$$$$$$$$$$#####"     $, .s$$$$$$$$$$$$$$$$$$$$$$$$s.
+   )          $$$$$$$$$$$#####'      `$$$$$$$$$###########$$$$$$$$$$$
+  ((          $$$$$$$$$$$#####       $$$$$$$$###"       "####$$$$$$$$$$
+  ) \         $$$$$$$$$$$$####.     $$$$$$###"             "###$$$$$$$$$
+ (   )        $$$$$$$$$$$$$####.   $$$$$###"                ####$$$$$$$$$
+ )  ( (       $$"$$$$$$$$$$$#####.$$$$$###' PANDRAGON       .###$$$$$$$$$$
+ (  )  )   _,$"   $$$$$$$$$$$$######.$$##'                .###$$$$$$$$$$
+ ) (  ( \.         "$$$$$$$$$$$$$#######,,,.          ..####$$$$$$$$$$$"
+(   )$ )  )        ,$$$$$$$$$$$$$$$$$$####################$$$$$$$$$$$"
+(   ($$  ( \     _sS"  `"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$S$$,
+ )  )$$$s ) )  .      .   `$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"'  `$$
+  (   $$$Ss/  .$,    .$,,s$$$$$$##S$$$$$$$$$$$$$$$$$$$$$$$$S""        '
+    \)_$$$$$$$$$$$$$$$$$$$$$$$##"  $$        `$$.        `$$.
+        `"S$$$$$$$$$$$$$$$$$#"      $          `$          `$
+            `"""""""""""""'         '
+'''
 
 
 _STATUS_QUIPS = [
@@ -72,15 +120,46 @@ class ConnectPanel(QWidget):
         self._connecting_api = None
         saved = load_state()
 
-        outer = QVBoxLayout(self)
-        outer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer = QHBoxLayout(self)
+        outer.setSpacing(15)
+        outer.setContentsMargins(26, 0, 26, 0)
 
         form = QVBoxLayout()
         form.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         form.setSpacing(6)
         form.setContentsMargins(0, 0, 0, 0)
 
-        form_w = 400
+        form_w = 360
+
+        # -- server history row --
+        server_row = QHBoxLayout()
+        server_row.setSpacing(4)
+        self._server_combo = QComboBox()
+        self._server_combo.setFont(_MONO)
+        self._server_combo.setFixedWidth(form_w - 30)
+        self._server_combo.setPlaceholderText(tr("connect.quick_connect", "\u2014 Quick Connect \u2014"))
+        self._server_combo.currentIndexChanged.connect(self._on_server_selected)
+        server_row.addWidget(self._server_combo)
+
+        self._remove_server_btn = QPushButton("\u2715")
+        self._remove_server_btn.setFont(_MONO)
+        self._remove_server_btn.setFixedWidth(26)
+        self._remove_server_btn.setFixedHeight(24)
+        self._remove_server_btn.setObjectName("removeServerBtn")
+        self._remove_server_btn.setStyleSheet(
+            "QPushButton#removeServerBtn { padding: 0px; font-size: 10pt; }"
+        )
+        self._remove_server_btn.clicked.connect(self._remove_server)
+        server_row.addWidget(self._remove_server_btn)
+
+        sw = QWidget()
+        sw.setLayout(server_row)
+        sw.setFixedWidth(form_w)
+        form.addWidget(sw, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self._refresh_server_combo()
+        # -- end server history row --
+
+        form.addSpacing(8)
 
         self._title = QLabel(tr("connect.title", "PANDRAGON"))
         self._title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -152,27 +231,48 @@ class ConnectPanel(QWidget):
 
         form.addSpacing(4)
 
-        lang_row = QHBoxLayout()
-        lang_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lang_row.setSpacing(0)
+        pref_row = QHBoxLayout()
+        pref_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pref_row.setSpacing(0)
         self._lang_en = QPushButton(tr("connect.lang_en", "EN"))
         self._lang_en.setFont(_MONO_BOLD)
         self._lang_en.setFixedWidth(50)
         self._lang_en.setFixedHeight(28)
         self._lang_en.setCheckable(True)
         self._lang_en.clicked.connect(lambda: self._set_lang("en"))
-        lang_row.addWidget(self._lang_en)
+        pref_row.addWidget(self._lang_en)
         self._lang_zh = QPushButton(tr("connect.lang_zh", "简体"))
         self._lang_zh.setFont(_MONO_BOLD)
         self._lang_zh.setFixedWidth(50)
         self._lang_zh.setFixedHeight(28)
         self._lang_zh.setCheckable(True)
         self._lang_zh.clicked.connect(lambda: self._set_lang("zh_CN"))
-        lang_row.addWidget(self._lang_zh)
-        lw = QWidget()
-        lw.setLayout(lang_row)
-        lw.setFixedWidth(form_w)
-        form.addWidget(lw, alignment=Qt.AlignmentFlag.AlignHCenter)
+        pref_row.addWidget(self._lang_zh)
+
+        theme_lbl = QLabel(tr("connect.theme", "Theme"))
+        theme_lbl.setFont(_MONO)
+        theme_lbl.setStyleSheet("color: #888;")
+        theme_lbl.setContentsMargins(10, 0, 4, 0)
+        pref_row.addWidget(theme_lbl)
+
+        self._theme_combo = QComboBox()
+        self._theme_combo.setFont(_MONO)
+        self._theme_combo.setFixedWidth(100)
+        self._theme_combo.setFixedHeight(26)
+        theme_mgr = self.parent().theme_mgr if hasattr(self.parent(), "theme_mgr") else None
+        if theme_mgr:
+            for name in theme_mgr.names():
+                self._theme_combo.addItem(name.capitalize(), name)
+            self._theme_combo.setCurrentText(theme_mgr.current.capitalize())
+            self._theme_combo.currentIndexChanged.connect(
+                lambda idx: theme_mgr.apply(self._theme_combo.itemData(idx))
+            )
+        pref_row.addWidget(self._theme_combo)
+
+        pw = QWidget()
+        pw.setLayout(pref_row)
+        pw.setFixedWidth(form_w)
+        form.addWidget(pw, alignment=Qt.AlignmentFlag.AlignHCenter)
         self._sync_lang_buttons()
 
         form.addSpacing(4)
@@ -204,7 +304,98 @@ class ConnectPanel(QWidget):
         self._progress.setStyleSheet("background: transparent;")
         form.addWidget(self._progress, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        outer.addLayout(form)
+        form_widget = QWidget()
+        form_widget.setLayout(form)
+        form_widget.setFixedWidth(form_w)
+        outer.addWidget(form_widget, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self._dragon_sep = QFrame()
+        self._dragon_sep.setFrameShape(QFrame.Shape.VLine)
+        self._dragon_sep.setFixedWidth(1)
+        outer.addWidget(self._dragon_sep)
+
+        self._dragon = QLabel(_DRAGON_ART)
+        self._dragon.setFont(_MONO_DRAGON)
+        outer.addWidget(self._dragon, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self._dragon_sep.setFixedHeight(self._dragon.sizeHint().height())
+
+        theme_mgr = self.parent().theme_mgr if hasattr(self.parent(), "theme_mgr") else None
+        self._apply_dragon_theme(theme_mgr)
+        if theme_mgr:
+            theme_mgr.theme_changed.connect(self._on_theme_changed)
+
+    def _apply_dragon_theme(self, theme_mgr):
+        accent = theme_mgr.accent_color() if theme_mgr else "#00d4ff"
+        self._dragon.setStyleSheet(f"color: {accent}; background: transparent;")
+        self._dragon_sep.setStyleSheet(f"color: {accent}; background-color: {accent}; max-width: 1px;")
+
+    def _on_theme_changed(self, theme_name):
+        theme_mgr = self.parent().theme_mgr if hasattr(self.parent(), "theme_mgr") else None
+        self._apply_dragon_theme(theme_mgr)
+
+    #  Server history
+
+    @staticmethod
+    def _server_label(url):
+        url = url.replace("wss://", "").replace("ws://", "")
+        return url.split("/")[0]
+
+    def _refresh_server_combo(self):
+        self._server_combo.blockSignals(True)
+        self._server_combo.clear()
+        self._server_combo.addItem(tr("connect.quick_connect", "\u2014 Quick Connect \u2014"), "")
+        self._server_combo.insertSeparator(1)
+        saved = load_state().get("saved_servers", [])
+        current_url = self._url.text().strip() if hasattr(self, "_url") else ""
+        current_idx = -1
+        for i, entry in enumerate(saved):
+            url = entry.get("url", "")
+            label = entry.get("label") or self._server_label(url)
+            self._server_combo.addItem(label, url)
+            if url == current_url:
+                current_idx = i + 2  # +2 for default item + separator
+        if current_idx >= 0:
+            self._server_combo.setCurrentIndex(current_idx)
+        self._server_combo.blockSignals(False)
+
+    def _on_server_selected(self, idx):
+        url = self._server_combo.itemData(idx)
+        if not url:
+            return
+        saved = load_state().get("saved_servers", [])
+        for entry in saved:
+            if entry.get("url") == url:
+                self._url.setText(url)
+                self._username.setText(entry.get("username", ""))
+                token = entry.get("token", "")
+                self._token.setText(token)
+                self._remember.setChecked(bool(token))
+                break
+
+    def _save_server(self, url, username, token):
+        saved = list(load_state().get("saved_servers", []))
+        label = self._server_label(url)
+        entry = {"url": url, "username": username, "token": token, "label": label}
+        # Remove existing entry with same URL, then prepend
+        saved = [e for e in saved if e.get("url") != url]
+        saved.insert(0, entry)
+        # Keep max 10 entries
+        saved = saved[:10]
+        save_state({"saved_servers": saved})
+
+    def _remove_server(self):
+        idx = self._server_combo.currentIndex()
+        url = self._server_combo.itemData(idx)
+        if not url:
+            return
+        saved = list(load_state().get("saved_servers", []))
+        saved = [e for e in saved if e.get("url") != url]
+        save_state({"saved_servers": saved})
+        self._refresh_server_combo()
+        self._progress.clear_stages()
+        self._progress.add_stage(tr("connect.server_removed", "Server removed"), "info")
+        QTimer.singleShot(2000, self._progress.clear_stages)
 
     def animate_in(self):
         pass
@@ -278,6 +469,8 @@ class ConnectPanel(QWidget):
         else:
             _updates["last_token"] = ""
         save_state(_updates)
+        saved_token = token if self._remember.isChecked() else ""
+        self._save_server(url, username, saved_token)
 
         self._connecting_api = None
         QTimer.singleShot(300, lambda: self._on_connected(api))
@@ -310,6 +503,7 @@ class ConnectPanel(QWidget):
         self._remember.setText(tr("connect.remember", "Remember"))
         self._connect_btn.setText(tr("connect.connect_btn", "CONNECT"))
         self._cancel_btn.setText(tr("connect.cancel_btn", "CANCEL"))
+        self._refresh_server_combo()
 
 
 class MainWindow(QMainWindow):
@@ -386,7 +580,7 @@ class MainWindow(QMainWindow):
         self._connect_panel = ConnectPanel(self._on_connected, self)
         self._stack.insertWidget(1, self._connect_panel)
         self._stack.setCurrentIndex(1)
-        self.resize(480, 400)
+        self.resize(680, 420)
         self.setWindowTitle(tr("window.title", "Pandragon Operator Console"))
 
     #  Splash / transitions 
@@ -395,7 +589,7 @@ class MainWindow(QMainWindow):
         if self._splash_done:
             return
         self._splash_done = True
-        self.resize(480, 400)
+        self.resize(680, 420)
         self._crossfade(0, 1, callback=self._after_connect_fade)
 
     def _after_connect_fade(self):

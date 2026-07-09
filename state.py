@@ -16,6 +16,7 @@ _DEFAULT = {
     "last_username": "operator",
     "last_token": "",
     "last_language": "en",
+    "saved_servers": [],
 }
 
 

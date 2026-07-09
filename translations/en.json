@@ -585,6 +585,11 @@
   "connect.default_username": "operator",
   "connect.lang_en": "EN",
   "connect.lang_zh": "简体",
+  "connect.quick_connect": "\u2014 Quick Connect \u2014",
+  "connect.saved_servers": "Saved Servers",
+  "connect.remove_server": "Remove",
+  "connect.theme": "Theme",
+  "connect.server_removed": "Server removed",
 
   "quip.eyes_chico": "the eyes chico, they never lie",
   "quip.bird_of_hermes": "\u201cthe bird of Hermes is my Name\u201d",

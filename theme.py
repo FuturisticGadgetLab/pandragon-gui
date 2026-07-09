@@ -6,6 +6,7 @@ Provides runtime theme switching via signal and a combo-box helper.
 """
 
 import os
+import re
 
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QApplication, QComboBox
@@ -79,6 +80,15 @@ class ThemeManager(QObject):
             lambda idx: self.apply(cb.itemData(idx))
         )
         return cb
+
+    _ACCENT_RE = re.compile(r"border-bottom\s*:\s*\d+px\s+solid\s+(#[0-9a-fA-F]{6})")
+
+    def accent_color(self) -> str:
+        qss = self._theme_cache.get(self._current, "")
+        m = self._ACCENT_RE.search(qss)
+        if m:
+            return m.group(1)
+        return "#00d4ff"
 
     #  Internal 
 
