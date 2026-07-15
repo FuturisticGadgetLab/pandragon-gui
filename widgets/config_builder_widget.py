@@ -655,11 +655,11 @@ class _BuildWorker(QObject):
                 self.progress.emit(line.rstrip())
             proc.wait()
             if proc.returncode == 0:
-                self.progress.emit("Make succeeded — beacon compiled.")
+                self.progress.emit("Make succeeded, beacon compiled.")
             else:
                 self.progress.emit(f"Make failed with exit code {proc.returncode}")
         except FileNotFoundError:
-            self.progress.emit("make not found — install build-essential / mingw-w64")
+            self.progress.emit("make not found, install build-essential / mingw-w64")
         except Exception as e:
             self.progress.emit(f"Compile error: {e}")
 
@@ -2240,7 +2240,7 @@ class ConfigBuilderWidget(QWidget):
         else:
             c["kill_date"] = ""
 
-        # Malleable (per-channel + global) — save current tab fields
+        # Malleable (per-channel + global), save current tab fields
         self._save_current_malleable_fields()
 
         # Post-build + in-memory append

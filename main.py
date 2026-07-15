@@ -846,7 +846,7 @@ def main(accept_responsibility=False):
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle(tr("eula.title", "Authorized Use Only"))
         msg.setText(tr("eula.message",
-            "Pandragon — Authorized Use Only\n\n"
+            "Pandragon Framework, Authorized Use Only\n\n"
             "This framework is intended exclusively for:\n"
             "  \u2022  Authorized penetration testing with written permission\n"
             "     from the target system owner(s)\n"
